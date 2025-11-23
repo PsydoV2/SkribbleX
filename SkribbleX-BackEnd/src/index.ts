@@ -14,18 +14,19 @@ import { authMiddleware } from "./middlewares/auth.middleware";
 // import userRoutes from "./routes/user.routes";
 import { errorHandler, notFoundHandler } from "./middlewares/error.middleware";
 import { EnvValidator } from "./utils/EnvValidator";
+import { initSocket } from "./socket";
 
 // Load environment variables
 dotenv.config();
 
 // Validate required environment variables
 EnvValidator.checkEnv([
-  "DBHOST",
-  "DBPORT",
-  "DBNAME",
-  "DBUSER",
-  "DBPASSWORD",
-  "SECRETKEYJWT",
+  // "DBHOST",
+  // "DBPORT",
+  // "DBNAME",
+  // "DBUSER",
+  // "DBPASSWORD",
+  // "SECRETKEYJWT",
   "HTTPSPORT",
   "HTTPPORT",
 ]);
@@ -66,27 +67,26 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Ports
-const HTTPPORT = process.env.HTTPPORT || 9080;
-const HTTPSPORT = process.env.HTTPSPORT || 9444;
+const HTTPPORT = Number(process.env.HTTPPORT) || 9080;
+const HTTPSPORT = Number(process.env.HTTPSPORT) || 9444;
 
-/**
- * Start HTTP in local development (NODE_ENV=localhost),
- * otherwise start HTTPS server in production.
- */
+let server: http.Server | https.Server;
+
 if (process.env.NODE_ENV === "localhost") {
-  http.createServer(app).listen(HTTPPORT, () => {
-    console.log(`🚀 API (HTTP) running on port ${HTTPPORT}`);
-  });
+  server = http.createServer(app);
+  server.listen(HTTPPORT, () => console.log(`🚀 HTTP running on ${HTTPPORT}`));
 } else {
-  https
-    .createServer(
-      {
-        key: fs.readFileSync("./key.key"),
-        cert: fs.readFileSync("./fullchain.pem"),
-      },
-      app
-    )
-    .listen(HTTPSPORT, () => {
-      console.log(`🚀 API (HTTPS) running on port ${HTTPSPORT}`);
-    });
+  server = https.createServer(
+    {
+      key: fs.readFileSync("./key.key"),
+      cert: fs.readFileSync("./fullchain.pem"),
+    },
+    app
+  );
+  server.listen(HTTPSPORT, () =>
+    console.log(`🚀 HTTPS running on ${HTTPSPORT}`)
+  );
 }
+
+// hier hängt sich Socket.io dran
+initSocket(server);

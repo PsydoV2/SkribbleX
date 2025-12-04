@@ -4,19 +4,15 @@ export default function SelectMenu() {
       <div className="smLeftCon smCon">
         <h2>CREATE</h2>
         <p>
-          Lorem ipsum dolor sit amet consectetur adipisicing elit. Totam
-          repellat possimus, eum iste illo explicabo atque blanditiis quae nemo
-          dignissimos nulla nostrum laboriosam veritatis corporis, ducimus
-          officia? Voluptatum, eius mollitia!
+          Create your own room and share the code with friends. You set the
+          stage — the drawing battle begins!
         </p>
       </div>
       <div className="smRightCon smCon">
         <h2>JOIN</h2>
         <p>
-          Lorem ipsum dolor sit amet consectetur adipisicing elit. Totam
-          repellat possimus, eum iste illo explicabo atque blanditiis quae nemo
-          dignissimos nulla nostrum laboriosam veritatis corporis, ducimus
-          officia? Voluptatum, eius mollitia!
+          Enter a 6-digit room code to join an existing game. Jump right in and
+          start guessing or drawing with the group.
         </p>
       </div>
     </div>

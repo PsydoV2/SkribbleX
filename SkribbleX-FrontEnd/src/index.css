@@ -1,23 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap");
 
 :root {
-  --bg-dark: hsl(0 0% 90%);
-  --bg: hsl(300 0% 95%);
-  --bg-light: hsl(300 50% 100%);
-  --text: hsl(300 0% 4%);
-  --text-muted: hsl(0 0% 28%);
-  --highlight: hsl(300 50% 100%);
-  --border: hsl(NaN 0% 50%);
-  --border-muted: hsl(340 0% 62%);
-  --primary: hsl(357 44% 32%);
-  --secondary: hsl(183 100% 9%);
-  --danger: hsl(9 21% 41%);
-  --warning: hsl(52 23% 34%);
-  --success: hsl(147 19% 36%);
-  --info: hsl(217 22% 41%);
-}
-
-:root {
   --bg-dark: hsl(336 0% 1%);
   --bg: hsl(300 0% 4%);
   --bg-light: hsl(0 0% 9%);
@@ -26,7 +9,7 @@
   --highlight: hsl(330 0% 39%);
   --border: hsl(0 0% 28%);
   --border-muted: hsl(300 0% 18%);
-  --primary: hsl(0 66% 75%);
+  --primary: hsl(48, 100%, 51%);
   --secondary: hsl(183 52% 57%);
   --danger: hsl(9 26% 64%);
   --warning: hsl(52 19% 57%);
@@ -109,15 +92,17 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
-  margin-top: -150px;
-  margin-left: -400px;
-  width: 800px;
-  height: 300px;
+  margin-top: -100px;
+  margin-left: -250px;
+  width: 500px;
+  height: 200px;
 
   display: flex;
   gap: 1rem;
   justify-content: center;
   align-items: center;
+
+  box-shadow: 0px 0px 10px 1px var(--bg);
 }
 
 .smCon {
@@ -132,6 +117,8 @@ body {
   text-align: center;
 
   cursor: pointer;
+
+  transition: 0.1s ease-in-out 0s;
 }
 
 .smCon p {
@@ -139,5 +126,7 @@ body {
 }
 
 .smCon:hover {
-  background-color: var(--border-muted);
+  /* background-color: var(--border-muted); */
+  box-shadow: 0px 0px 10px 2px var(--primary);
+  outline: 1px solid var(--primary);
 }

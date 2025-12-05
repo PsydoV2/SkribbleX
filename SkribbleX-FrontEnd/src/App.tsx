@@ -30,7 +30,14 @@ function App() {
     <>
       <ConnectionStatus isConnected={isConnected}></ConnectionStatus>
 
-      {roomID === "" ? <SelectMenu></SelectMenu> : <></>}
+      {roomID === "" ? (
+        <SelectMenu
+          createRoom={() => null}
+          joinRoom={(givenRoomID) => setRoomID(givenRoomID)}
+        ></SelectMenu>
+      ) : (
+        <></>
+      )}
     </>
   );
 }

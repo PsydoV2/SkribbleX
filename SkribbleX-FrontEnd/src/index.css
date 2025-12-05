@@ -10,7 +10,7 @@
   --border: hsl(0 0% 28%);
   --border-muted: hsl(300 0% 18%);
   --primary: hsl(48, 100%, 51%);
-  --secondary: hsl(183 52% 57%);
+  --secondary: hsl(221, 81%, 46%);
   --danger: hsl(9 26% 64%);
   --warning: hsl(52 19% 57%);
   --success: hsl(146 17% 59%);
@@ -52,6 +52,8 @@ body {
   font-optical-sizing: auto;
   font-style: normal;
   font-variation-settings: "wdth" 100;
+
+  transition: 0.1s ease-in-out 0s;
 }
 
 .statusWrapper {
@@ -117,8 +119,6 @@ body {
   text-align: center;
 
   cursor: pointer;
-
-  transition: 0.1s ease-in-out 0s;
 }
 
 .smCon p {
@@ -129,4 +129,111 @@ body {
   /* background-color: var(--border-muted); */
   box-shadow: 0px 0px 10px 2px var(--primary);
   outline: 1px solid var(--primary);
+}
+
+.smJoinCon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  /* gap: 1rem; */
+}
+
+.smJoinCon h2 {
+  width: 100%;
+  text-align: center;
+  position: absolute;
+  top: 1rem;
+}
+
+.smJoinCon button {
+  background-color: var(--secondary);
+  border: 0;
+  outline: 0;
+  border-radius: 0.5rem;
+
+  font-size: large;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  height: 52px;
+  width: 44px;
+
+  cursor: pointer;
+}
+
+.smJoinCon button:last-of-type {
+  background-color: var(--bg-light);
+  color: var(--text-muted);
+
+  width: 100px;
+
+  position: absolute;
+  bottom: 1rem;
+}
+
+.smJoinCon button:last-of-type:hover {
+  background-color: color-mix(in srgb, var(--bg-light), transparent 20%);
+}
+
+.smJoinCon button:hover {
+  background-color: color-mix(in srgb, var(--secondary), transparent 20%);
+}
+
+.otp-input {
+  height: 50px !important;
+  width: 40px !important;
+  background-color: var(--border-muted);
+  border: 0;
+  border-radius: 0.5rem;
+
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 600;
+
+  transition: border-color 0.2s ease, background-color 0.2s ease,
+    transform 0.12s ease;
+
+  margin-right: 1rem;
+}
+
+/* Hover */
+.otp-input:hover {
+  border-color: var(--primary);
+}
+
+/* Focus */
+.otp-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background-color: var(--bg-light);
+}
+
+/* Pop-in animation */
+.otp-input:not(:placeholder-shown) {
+  animation: otpPop 0.15s ease;
+}
+
+@keyframes otpPop {
+  0% {
+    transform: scale(0.85);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Error state (z. B. falscher Code) */
+.otp-error .otp-input {
+  border-color: var(--danger);
+  background-color: rgba(255, 0, 0, 0.1);
+  box-shadow: 0 0 8px rgba(255, 0, 0, 0.35);
+}
+
+/* Wenn voll ausgefüllt → leichte Grünmarkierung */
+.otp-done {
+  outline: 1px solid green;
+  /* box-shadow: 0 0 10px 1px var(--success); */
 }

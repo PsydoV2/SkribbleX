@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { socket } from "./socket";
 import ConnectionStatus from "./components/ConnectionStatus";
 import SelectMenu from "./components/SelectMenu";
+import GamePage from "./components/GamePage";
+import { SocketService } from "./service/socket.service";
 
 function App() {
   const [isConnected, setIsConnected] = useState(socket.connected);
-
   const [roomID, setRoomID] = useState("");
+  const socketHelper: SocketService = new SocketService();
 
   useEffect(() => {
     function onConnect() {
@@ -26,17 +28,22 @@ function App() {
     };
   }, []);
 
+  const handleJoinRoom = (roomID: string) => {
+    setRoomID(roomID);
+    socketHelper.joinRoom(roomID);
+  };
+
   return (
     <>
       <ConnectionStatus isConnected={isConnected}></ConnectionStatus>
 
       {roomID === "" ? (
         <SelectMenu
-          createRoom={() => null}
-          joinRoom={(givenRoomID) => setRoomID(givenRoomID)}
+          createRoom={() => socketHelper.createRoom()}
+          joinRoom={(givenRoomID) => handleJoinRoom(givenRoomID)}
         ></SelectMenu>
       ) : (
-        <></>
+        <GamePage></GamePage>
       )}
     </>
   );

@@ -4,7 +4,7 @@ import OtpInput from "react-otp-input";
 
 interface SelectMenuProps {
   joinRoom: (roomID: string) => void;
-  createRoom: () => null;
+  createRoom: () => void;
 }
 
 export default function SelectMenu(props: SelectMenuProps) {

@@ -1,4 +1,3 @@
-import { DBConnectionPool } from "../config/DBConnectionPool";
 import fs from "fs/promises";
 import path from "path";
 
@@ -37,45 +36,6 @@ export class LogHelper {
       await fs.appendFile(filePath, line, "utf8");
     } catch (fileErr) {
       console.error("❌ Failed to write info log file:", fileErr);
-    }
-  }
-
-  /**
-   * Logs errors/warnings either into a database table (ErrorLog) or console fallback.
-   * @param route API route or function name
-   * @param error Error object or string
-   * @param level 'critical' | 'error' | 'warning'
-   */
-  static async logError(route: string, error: unknown, level: LogSeverity) {
-    // If severity is INFO, delegate to logInfo()
-    if (level === LogSeverity.INFO) {
-      await LogHelper.logInfo(
-        route,
-        error instanceof Error ? error.stack || error.message : String(error)
-      );
-      return;
-    }
-
-    const errorString =
-      error instanceof Error ? error.stack || error.message : String(error);
-
-    let connection: any;
-    try {
-      connection = await DBConnectionPool.getConnection();
-      await connection.beginTransaction();
-
-      // Insert error log into database (adjust schema/table for your project)
-      const insertSQL = `
-        INSERT INTO ErrorLog (route, error, level)
-        VALUES (?, ?, ?)
-      `;
-      await connection.execute(insertSQL, [route, errorString, level]);
-      await connection.commit();
-    } catch (dbErr) {
-      console.error("❌ Failed to write to ErrorLog DB:", dbErr);
-      if (connection) await connection.rollback();
-    } finally {
-      if (connection) connection.release();
     }
   }
 }

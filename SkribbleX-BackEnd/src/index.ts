@@ -9,40 +9,30 @@ import fs from "fs";
 import { json } from "body-parser";
 
 import { globalRateLimiter } from "./middlewares/globalRateLimiter.middleware";
-import { authMiddleware } from "./middlewares/auth.middleware";
-// import authRoutes from "./routes/auth.routes";
-// import userRoutes from "./routes/user.routes";
 import { errorHandler, notFoundHandler } from "./middlewares/error.middleware";
 import { EnvValidator } from "./utils/EnvValidator";
 import { initSocket } from "./socket";
 
-// Load environment variables
+import roomRoutes from "./routes/room.routes";
+
+// .env laden
 dotenv.config();
 
-// Validate required environment variables
-EnvValidator.checkEnv([
-  // "DBHOST",
-  // "DBPORT",
-  // "DBNAME",
-  // "DBUSER",
-  // "DBPASSWORD",
-  // "SECRETKEYJWT",
-  "HTTPSPORT",
-  "HTTPPORT",
-]);
+// Pflicht-Variablen prüfen
+EnvValidator.checkEnv(["HTTPPORT", "HTTPSPORT"]);
 
 const app = express();
 
-// Security middleware
+// Security-Header
 app.use(helmet());
 
-// Basic request logger (can be replaced with a proper logger like Winston or Pino)
+// Simple Logger
 app.use((req, _res, next) => {
   console.log(`🔥 ${req.method} ${req.url}`);
   next();
 });
 
-// CORS configuration (customize per project)
+// CORS (später origin einschränken)
 app.use(
   cors({
     origin: "*",
@@ -52,41 +42,53 @@ app.use(
   })
 );
 
-// JSON body parser
+// JSON Body Parser
 app.use(json());
 
-// Global rate limiting
+// Rate Limiting (kannst du zum Debuggen auskommentieren)
 app.use(globalRateLimiter);
 
-// Routes
-// app.use("/api", authRoutes);
-// app.use("/api", authMiddleware, userRoutes);
+// --- REST-Routen ---
+app.use("/api", roomRoutes);
 
 // Fallbacks
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Ports
 const HTTPPORT = Number(process.env.HTTPPORT) || 9080;
 const HTTPSPORT = Number(process.env.HTTPSPORT) || 9444;
 
 let server: http.Server | https.Server;
 
+// Lokal nur HTTP, Prod mit HTTPS
 if (process.env.NODE_ENV === "localhost") {
   server = http.createServer(app);
-  server.listen(HTTPPORT, () => console.log(`🚀 HTTP running on ${HTTPPORT}`));
+  server.listen(HTTPPORT, () => {
+    console.log(`🚀 HTTP running on ${HTTPPORT}`);
+  });
 } else {
-  server = https.createServer(
-    {
-      key: fs.readFileSync("./key.key"),
-      cert: fs.readFileSync("./fullchain.pem"),
-    },
-    app
-  );
-  server.listen(HTTPSPORT, () =>
-    console.log(`🚀 HTTPS running on ${HTTPSPORT}`)
-  );
+  // Zertifikate einlesen – Pfade ggf. in .env packen
+  const key = fs.readFileSync("./key.key");
+  const cert = fs.readFileSync("./fullchain.pem");
+
+  server = https.createServer({ key, cert }, app);
+  server.listen(HTTPSPORT, () => {
+    console.log(`🚀 HTTPS running on ${HTTPSPORT}`);
+  });
+
+  // Optional: HTTP → HTTPS Redirect
+  http
+    .createServer((req, res) => {
+      const host = req.headers.host || "";
+      res.writeHead(301, {
+        Location: `https://${host}${req.url}`,
+      });
+      res.end();
+    })
+    .listen(HTTPPORT, () => {
+      console.log(`➡️  Redirect HTTP ${HTTPPORT} → HTTPS ${HTTPSPORT}`);
+    });
 }
 
-// hier hängt sich Socket.io dran
+// Socket.io an den HTTPS-/HTTP-Server hängen
 initSocket(server);

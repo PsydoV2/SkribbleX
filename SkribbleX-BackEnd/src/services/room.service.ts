@@ -1,40 +1,35 @@
-// src/services/RoomService.ts
+// src/services/room.service.ts
+import { nanoid } from "nanoid";
+import { RoomState } from "../types/RoomState";
 
-import type { RoomState } from "../types/RoomState";
-import type { Player } from "../types/Player";
+type JoinRoomPayload = { roomID: string; socketId: string };
 
-const rooms = new Map<string, RoomState>();
+export async function createRoom() {
+  // DB-Insert etc.
+  const roomID: string = nanoid(6).toUpperCase();
 
-export class RoomService {
-  static getOrCreateRoom(roomId: string): RoomState {
-    let room = rooms.get(roomId);
-    if (!room) {
-      room = {
-        players: {},
-        drawerId: null,
-        word: null,
-        round: 0,
-        started: false,
-      };
-      rooms.set(roomId, room);
-    }
-    return room;
-  }
+  console.debug("Creating room with ID: ", roomID);
 
-  static getRoom(roomId: string): RoomState | undefined {
-    return rooms.get(roomId);
-  }
+  return roomID;
+}
 
-  static removeRoom(roomId: string): void {
-    rooms.delete(roomId);
-  }
+export async function joinRoom(payload: JoinRoomPayload) {
+  // DB-Check, Pin prüfen, User in Room eintragen ...
+  console.debug("Joining room with ID: ", payload.roomID);
+  // return { id: payload.roomId, userId: "..." };
+}
 
-  static addPlayer(roomId: string, userId: string, username: string) {
-    const room = RoomService.getOrCreateRoom(roomId);
-    if (!room.players[userId]) {
-      const p: Player = { id: userId, name: username, score: 0 };
-      room.players[userId] = p;
-    }
-    return room;
-  }
+export async function saveMessage(args: {
+  roomId: string;
+  message: string;
+  socketId: string;
+}) {
+  // Nachricht speichern, Daten vorbereiten
+  return {
+    id: "msg-id",
+    roomId: args.roomId,
+    text: args.message,
+    fromSocket: args.socketId,
+    createdAt: new Date().toISOString(),
+  };
 }

@@ -18,7 +18,7 @@ export default function SelectMenu(props: SelectMenuProps) {
           <h2>Enter room code</h2>
 
           <OtpInput
-            value={roomID}
+            value={roomID.toUpperCase()}
             onChange={setRoomID}
             numInputs={6}
             renderInput={(props) => (

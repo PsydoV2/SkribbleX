@@ -3,12 +3,11 @@ import { socket } from "./socket";
 import ConnectionStatus from "./components/ConnectionStatus";
 import SelectMenu from "./components/SelectMenu";
 import GamePage from "./components/GamePage";
-import { SocketService } from "./service/socket.service";
+import { socketService } from "./service/socket.service";
 
 function App() {
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [roomID, setRoomID] = useState("");
-  const socketHelper: SocketService = new SocketService();
 
   useEffect(() => {
     function onConnect() {
@@ -30,7 +29,7 @@ function App() {
 
   const handleJoinRoom = (roomID: string) => {
     setRoomID(roomID);
-    socketHelper.joinRoom(roomID);
+    socketService.joinRoom(roomID);
   };
 
   return (
@@ -39,7 +38,7 @@ function App() {
 
       {roomID === "" ? (
         <SelectMenu
-          createRoom={() => socketHelper.createRoom()}
+          createRoom={() => socketService.createRoom()}
           joinRoom={(givenRoomID) => handleJoinRoom(givenRoomID)}
         ></SelectMenu>
       ) : (

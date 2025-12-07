@@ -46,6 +46,8 @@ body {
   width: 100%;
 
   margin: 0;
+
+  background: radial-gradient(transparent, var(--bg-dark));
 }
 
 * {
@@ -70,7 +72,7 @@ body {
 }
 
 .statusWrapper .statusCircle {
-  height: 10px;
+  height: 0.5rem;
   aspect-ratio: 1/1;
 
   border-radius: 100%;

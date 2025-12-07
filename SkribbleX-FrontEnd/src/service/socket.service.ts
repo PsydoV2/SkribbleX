@@ -5,7 +5,7 @@ export class SocketService {
   createRoom() {
     console.debug("Creating new room");
 
-    socket.emit("room:create", {}, (response) => {
+    socket.emit("room:create", {}, (response: unknown) => {
       console.log("room:create response", response);
     });
   }
@@ -13,7 +13,7 @@ export class SocketService {
   joinRoom(roomID: string) {
     console.debug("Joining room with roomID: " + roomID);
 
-    socket.emit("room:join", { roomID }, (response) => {
+    socket.emit("room:join", { roomID }, (response: unknown) => {
       console.log("room:join response", response);
     });
   }

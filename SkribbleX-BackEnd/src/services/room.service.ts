@@ -1,12 +1,14 @@
 // src/services/room.service.ts
-import { nanoid } from "nanoid";
+import { nanoid, customAlphabet } from "nanoid";
 import { RoomState } from "../types/RoomState";
 
 type JoinRoomPayload = { roomID: string; socketId: string };
+const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const nano = customAlphabet(alphabet, 6);
 
 export async function createRoom() {
   // DB-Insert etc.
-  const roomID: string = nanoid(6).toUpperCase();
+  const roomID: string = nano(); // z.B. "9GZ2KD"
 
   console.debug("Creating room with ID: ", roomID);
 

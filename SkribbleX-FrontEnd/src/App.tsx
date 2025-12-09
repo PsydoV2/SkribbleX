@@ -27,9 +27,22 @@ function App() {
     };
   }, []);
 
-  const handleJoinRoom = (roomID: string) => {
-    setRoomID(roomID);
-    socketService.joinRoom(roomID);
+  const handleJoinRoom = async (roomID: string) => {
+    try {
+      await socketService.joinRoom(roomID);
+      setRoomID(roomID);
+    } catch (err) {
+      console.error("Failed to join room", err);
+    }
+  };
+
+  const handleCreateRoom = async () => {
+    try {
+      const roomID: string = await socketService.createRoom();
+      setRoomID(roomID);
+    } catch (err) {
+      console.error("Failed to create room", err);
+    }
   };
 
   return (
@@ -38,11 +51,11 @@ function App() {
 
       {roomID === "" ? (
         <SelectMenu
-          createRoom={() => socketService.createRoom()}
+          createRoom={handleCreateRoom}
           joinRoom={(givenRoomID) => handleJoinRoom(givenRoomID)}
         ></SelectMenu>
       ) : (
-        <GamePage></GamePage>
+        <GamePage roomID={roomID}></GamePage>
       )}
     </>
   );

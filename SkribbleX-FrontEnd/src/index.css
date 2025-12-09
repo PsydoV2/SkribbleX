@@ -1,7 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap");
 
 :root {
-  --bg-dark: hsl(0, 0%, 1%);
+  --bg-dark: #030303;
   --bg: hsl(300 0% 8%);
   --bg-light: hsl(0 0% 12%);
   --text: hsl(300 0% 95%);
@@ -11,10 +11,11 @@
   --border-muted: hsl(300 0% 18%);
   --primary: hsl(48, 100%, 51%);
   --secondary: hsl(221, 81%, 46%);
-  --danger: hsl(9 26% 64%);
-  --warning: hsl(52 19% 57%);
-  --success: hsl(146 17% 59%);
-  --info: hsl(217 28% 65%);
+  --danger: hsl(42, 100%, 50%);
+  --warning: hsl(0, 100%, 61%);
+  --success: rgb(24, 65, 1, 0.7);
+  --success-border: rgb(45, 124, 0);
+  --info: hsl(195, 100%, 59%);
 }
 
 .roboto {
@@ -25,29 +26,20 @@
 }
 
 html {
-  background-color: var(--bg-dark);
-  height: 100dvh;
-  width: 100dvw;
-
+  min-height: 100%;
   background-color: var(--bg-dark);
 
-  /* 1px Raster */
-  background-image: linear-gradient(var(--bg) 1px, transparent 1px),
+  background-image: radial-gradient(transparent, var(--bg-dark)),
+    linear-gradient(var(--bg) 1px, transparent 1px),
     linear-gradient(90deg, var(--bg) 1px, transparent 1px);
+  background-size: 100% 100%, /* radial */ 20px 20px, 20px 20px;
 
-  /* Abstand der Linien (Rastergröße, z. B. 20px) */
-  background-size: 20px 20px;
-
-  color-scheme: dark;
+  background-blend-mode: normal;
 }
 
 body {
-  height: 100%;
-  width: 100%;
-
   margin: 0;
-
-  background: radial-gradient(transparent, var(--bg-dark));
+  min-height: 100%;
 }
 
 * {
@@ -58,6 +50,9 @@ body {
   font-variation-settings: "wdth" 100;
 
   transition: 0.1s ease-in-out 0s;
+
+  outline: 0;
+  border: 0;
 }
 
 .statusWrapper {
@@ -131,8 +126,10 @@ body {
 
 .smCon:hover {
   /* background-color: var(--border-muted); */
-  box-shadow: 0px 0px 10px 2px var(--primary);
-  outline: 1px solid var(--primary);
+  /* box-shadow: 0px 0px 10px 2px var(--primary); */
+  /* outline: 1px solid var(--primary); */
+  border: 0;
+  background-color: var(--border-muted);
 }
 
 .smJoinCon {
@@ -210,8 +207,6 @@ body {
 
 /* Focus */
 .otp-input:focus {
-  outline: none;
-  border-color: var(--primary);
   background-color: var(--bg-light);
 }
 
@@ -240,4 +235,80 @@ body {
 .otp-done {
   outline: 1px solid green;
   /* box-shadow: 0 0 10px 1px var(--success); */
+}
+
+/* ----------------------------------------------------- */
+
+.gamePage {
+  margin: 0;
+}
+
+.gamePage #roomID {
+  background-color: var(--bg-light);
+  width: min-content;
+
+  padding: 1rem;
+  border-radius: 0.5rem;
+
+  position: absolute;
+  left: 1rem;
+  top: 1rem;
+
+  font-weight: bolder;
+
+  cursor: pointer;
+}
+
+.gamePage #roomID:hover {
+  background-color: var(--border-muted);
+}
+
+/* TOAST */
+
+/* Wrapper für alle Toasts */
+.toast-container {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 9999;
+  pointer-events: none; /* Klicks gehen durch */
+}
+
+/* Allgemeiner Toast */
+.toast {
+  pointer-events: auto;
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+
+  min-width: 100px;
+
+  text-align: center;
+  color: var(--text);
+  backdrop-filter: blur(4px);
+}
+
+/* Toast Typen */
+.toast.success {
+  background-color: var(--success);
+  outline: 1px solid var(--success-border);
+  box-shadow: 0px 0px 10px 1px var(--success-border);
+}
+
+.toast.error {
+  background-color: var(--danger);
+  box-shadow: 0px 0px 10px 1px var(--danger);
+}
+
+.toast.info {
+  background-color: var(--info);
+  box-shadow: 0px 0px 10px 1px var(--info);
+}
+
+.toast.warning {
+  background-color: var(--warning);
+  box-shadow: 0px 0px 10px 1px var(--warning);
 }

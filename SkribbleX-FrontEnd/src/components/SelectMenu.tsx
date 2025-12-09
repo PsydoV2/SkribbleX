@@ -3,8 +3,8 @@ import { FaChevronRight } from "react-icons/fa6";
 import OtpInput from "react-otp-input";
 
 interface SelectMenuProps {
-  joinRoom: (roomID: string) => void;
-  createRoom: () => void;
+  joinRoom: (roomID: string) => Promise<void>;
+  createRoom: () => Promise<void>;
 }
 
 export default function SelectMenu(props: SelectMenuProps) {

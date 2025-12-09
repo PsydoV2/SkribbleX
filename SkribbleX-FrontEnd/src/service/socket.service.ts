@@ -1,20 +1,49 @@
 // SocketService.ts
 import { socket } from "../socket";
 
+type CreateRoomResponse = {
+  ok: boolean;
+  roomID: string;
+  error?: string;
+};
+
+type JoinRoomResponse = {
+  ok: boolean;
+  error?: string;
+};
+
 export class SocketService {
-  createRoom() {
+  async createRoom() {
     console.debug("Creating new room");
 
-    socket.emit("room:create", {}, (response: unknown) => {
-      console.log("room:create response", response);
+    return new Promise<string>((resolve, reject) => {
+      socket.emit("room:create", {}, (response: CreateRoomResponse) => {
+        console.log("room:create response", response);
+
+        if (!response?.ok || !response.roomID) {
+          reject(new Error(response?.error ?? "Failed to create room"));
+          return;
+        }
+
+        resolve(response.roomID);
+      });
     });
   }
 
   joinRoom(roomID: string) {
     console.debug("Joining room with roomID: " + roomID);
 
-    socket.emit("room:join", { roomID }, (response: unknown) => {
-      console.log("room:join response", response);
+    return new Promise<void>((resolve, reject) => {
+      socket.emit("room:join", { roomId: roomID }, (response: JoinRoomResponse) => {
+        console.log("room:join response", response);
+
+        if (!response?.ok) {
+          reject(new Error(response?.error ?? "Failed to join room"));
+          return;
+        }
+
+        resolve();
+      });
     });
   }
 }

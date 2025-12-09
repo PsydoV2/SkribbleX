@@ -1,0 +1,17 @@
+:root {
+  --bg-dark: #030303;
+  --bg: hsl(300 0% 8%);
+  --bg-light: hsl(0 0% 12%);
+  --text: hsl(300 0% 95%);
+  --text-muted: hsl(300 0% 60%);
+  --highlight: hsl(330 0% 39%);
+  --border: hsl(0 0% 28%);
+  --border-muted: hsl(300 0% 18%);
+  --primary: hsl(48, 100%, 51%);
+  --secondary: hsl(221, 81%, 46%);
+  --danger: hsl(42, 100%, 50%);
+  --warning: hsl(0, 100%, 61%);
+  --success: rgb(24, 65, 1, 0.7);
+  --success-border: rgb(45, 124, 0);
+  --info: hsl(195, 100%, 59%);
+}

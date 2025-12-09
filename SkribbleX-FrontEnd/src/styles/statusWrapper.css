@@ -1,0 +1,29 @@
+@import "./variables.css";
+
+.statusWrapper {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+}
+
+.statusWrapper .statusCircle {
+  height: 0.5rem;
+  aspect-ratio: 1/1;
+
+  border-radius: 100%;
+}
+
+.statusWrapper .statusCircle.connected {
+  background-color: green;
+  box-shadow: 0px 0px 10px 1px green;
+}
+
+.statusWrapper .statusCircle.disconnected {
+  background-color: red;
+  box-shadow: 0px 0px 10px 1px red;
+}

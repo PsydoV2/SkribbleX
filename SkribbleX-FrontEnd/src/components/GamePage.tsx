@@ -17,14 +17,23 @@ export default function GamePage(props: GamePageProps) {
 
   return (
     <div className="gamePage">
-      <motion.p
-        id="roomID"
-        onClick={handleCopyRoomID}
-        whileTap={{ scale: 0.85 }}
-        transition={{ type: "spring", stiffness: 500, damping: 12 }}
-      >
-        {props.roomID}
-      </motion.p>
+      <div className="gameFrame">
+        <div className="gameTopBar">
+          <span>Round 00 of 99</span>
+          <span>_________</span>
+          <motion.span
+            id="roomID"
+            onClick={handleCopyRoomID}
+            whileTap={{ scale: 0.85 }}
+            transition={{ type: "spring", stiffness: 500, damping: 12 }}
+          >
+            {props.roomID}
+          </motion.span>
+        </div>
+        <div className="gamePlayerList"></div>
+        <canvas className="gameCanvas"></canvas>
+        <div className="gameGuessChat"></div>
+      </div>
     </div>
   );
 }

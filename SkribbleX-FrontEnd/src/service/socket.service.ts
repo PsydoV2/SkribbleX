@@ -34,16 +34,20 @@ export class SocketService {
     console.debug("Joining room with roomID: " + roomID);
 
     return new Promise<void>((resolve, reject) => {
-      socket.emit("room:join", { roomId: roomID }, (response: JoinRoomResponse) => {
-        console.log("room:join response", response);
+      socket.emit(
+        "room:join",
+        { roomId: roomID },
+        (response: JoinRoomResponse) => {
+          console.log("room:join response", response);
 
-        if (!response?.ok) {
-          reject(new Error(response?.error ?? "Failed to join room"));
-          return;
+          if (!response?.ok) {
+            reject(new Error(response?.error ?? "Failed to join room"));
+            return;
+          }
+
+          resolve();
         }
-
-        resolve();
-      });
+      );
     });
   }
 }

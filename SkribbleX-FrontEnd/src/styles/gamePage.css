@@ -1,0 +1,88 @@
+@import "./variables.css";
+
+.gamePage {
+  min-height: 100vh;
+  width: 100%;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  /* etwas Abstand zum Rand */
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+.gamePage .gameFrame {
+  /* responsive statt fix 1200px */
+  width: 100%;
+  max-width: 1200px;
+  height: 600px; /* kannst du auch in max-height ändern */
+
+  border-radius: 1rem;
+  overflow: hidden;
+  background-color: var(--bg-dark); /* statt rot */
+
+  display: grid;
+  grid-template-rows: auto 1fr;
+  grid-template-columns: 0.2fr 0.6fr 0.2fr; /* 20% / 60% / 20% */
+
+  /* optional Schatten */
+  /* box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35); */
+}
+
+/* Topbar geht über alle 3 Spalten */
+.gamePage .gameFrame .gameTopBar {
+  grid-column: 1 / -1;
+
+  height: 50px;
+  background-color: var(--bg);
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 0 1rem;
+}
+
+.gamePage .gameFrame .gameTopBar span:nth-of-type(2) {
+  color: var(--primary);
+  letter-spacing: 0.1rem;
+}
+
+/* Spieler-Liste links */
+.gamePage .gameFrame .gamePlayerList {
+  /* Zeile 2, Spalte 1 */
+  grid-row: 2;
+  grid-column: 1;
+
+  background-color: var(--bg-light);
+  /* Layout inside später */
+}
+
+/* Canvas in der Mitte */
+.gamePage .gameFrame .gameCanvas {
+  /* Zeile 2, Spalte 2 */
+  grid-row: 2;
+  grid-column: 2;
+
+  background-color: var(--highlight);
+  width: 100%;
+  height: 100%;
+  display: block; /* Canvas mag das gerne */
+}
+
+/* Chat rechts */
+.gamePage .gameFrame .gameGuessChat {
+  /* Zeile 2, Spalte 3 */
+  grid-row: 2;
+  grid-column: 3;
+
+  background-color: var(--bg-light);
+}
+
+/* Room-ID Style */
+.gamePage #roomID {
+  font-weight: bolder;
+  cursor: pointer;
+}

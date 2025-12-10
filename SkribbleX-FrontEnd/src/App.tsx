@@ -4,12 +4,12 @@ import ConnectionStatus from "./components/ConnectionStatus";
 import SelectMenu from "./components/SelectMenu";
 import GamePage from "./components/GamePage";
 import { socketService } from "./service/socket.service";
-// import { useToast } from "./hooks/ToastContext";
+import { useToast } from "./hooks/ToastContext";
 
 function App() {
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [roomID, setRoomID] = useState("");
-  // const { showToast } = useToast();
+  const { showToast } = useToast();
 
   useEffect(() => {
     function onConnect() {
@@ -39,15 +39,15 @@ function App() {
   };
 
   const handleCreateRoom = async () => {
-    // try {
-    //   const roomID: string = await socketService.createRoom();
-    //   setRoomID(roomID);
-    // } catch (err) {
-    //   console.error("Failed to create room", err);
-    //   setRoomID("000000");
-    //   showToast("error", err + "");
-    // }
-    setRoomID("000000");
+    try {
+      const roomID: string = await socketService.createRoom();
+      setRoomID(roomID);
+    } catch (err) {
+      console.error("Failed to create room", err);
+      setRoomID("000000");
+      showToast("error", err + "");
+    }
+    // setRoomID("000000");
   };
 
   return (

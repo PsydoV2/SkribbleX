@@ -17,6 +17,7 @@
   /* responsive statt fix 1200px */
   width: 100%;
   max-width: 1200px;
+  min-width: 800px;
   height: 600px; /* kannst du auch in max-height ändern */
 
   border-radius: 1rem;
@@ -57,6 +58,11 @@
   grid-column: 1;
 
   background-color: var(--bg);
+
+  display: flex;
+  justify-content: start;
+  align-items: center;
+  flex-direction: column;
   /* Layout inside später */
 }
 

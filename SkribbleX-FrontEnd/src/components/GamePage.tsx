@@ -1,5 +1,6 @@
 import { useToast } from "../hooks/ToastContext";
 import { motion } from "framer-motion";
+import Player from "./Player";
 
 interface GamePageProps {
   roomID: string;
@@ -30,7 +31,14 @@ export default function GamePage(props: GamePageProps) {
             {props.roomID}
           </motion.span>
         </div>
-        <div className="gamePlayerList"></div>
+        <div className="gamePlayerList">
+          <Player
+            isHost
+            name="Psydo"
+            points={125}
+            profilePic="https://media.istockphoto.com/id/517998264/vector/male-user-icon.jpg?s=612x612&w=0&k=20&c=4RMhqIXcJMcFkRJPq6K8h7ozuUoZhPwKniEke6KYa_k="
+          ></Player>
+        </div>
         <canvas className="gameCanvas"></canvas>
         <div className="gameGuessChat"></div>
       </div>

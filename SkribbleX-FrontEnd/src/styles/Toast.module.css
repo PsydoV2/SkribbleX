@@ -14,7 +14,7 @@
 .toast {
   pointer-events: auto;
   padding: 0.5rem 1rem;
-  border-radius: 1rem;
+  border-radius: var(--radius-lg);
   min-width: 100px;
   text-align: center;
   color: var(--text);
@@ -23,20 +23,24 @@
 
 .success {
   outline: 1px solid var(--success-border);
+  background-color: var(--success);
   box-shadow: var(--glow-success);
 }
 
 .error {
-  outline: 1px solid var(--danger);
+  outline: 1px solid var(--danger-border);
+  background-color: var(--danger);
   box-shadow: var(--glow-danger);
 }
 
 .info {
-  outline: 1px solid var(--info);
+  outline: 1px solid var(--info-border);
+  background-color: var(--info);
   box-shadow: var(--glow-info);
 }
 
 .warning {
-  outline: 1px solid var(--warning);
+  outline: 1px solid var(--warning-border);
+  background-color: var(--warning);
   box-shadow: var(--glow-warning);
 }

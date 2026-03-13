@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import PlayerCard from "./PlayerCard";
 import type { PublicRoom, DiscordUser, Language } from "@/types/game";
 import styles from "@/styles/LobbyView.module.css";
+import { useToast } from "@/hooks/ToastContext";
 
 interface LobbyViewProps {
   room: PublicRoom;
@@ -39,6 +40,7 @@ export default function LobbyView({
   const [lang, setLang] = useState<Language>(room.language);
   const [categories, setCategories] = useState<string[]>(room.categories);
   const [maxRounds, setMaxRounds] = useState<number>(room.maxRounds);
+  const { showToast } = useToast();
 
   const toggleCategory = (cat: string) => {
     const next = categories.includes(cat)
@@ -63,20 +65,35 @@ export default function LobbyView({
   const pillClass = (active: boolean) =>
     ["pill", active ? "pillActive" : ""].filter(Boolean).join(" ");
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast("success", "Copied!");
+    } catch (err) {
+      console.error(err);
+      showToast("error", "Error while trying to copy!");
+    }
+  };
+
   return (
     <div className={styles.lobbyPage}>
       <div className={styles.lobbyFrame}>
         <header className={styles.header}>
           <div className={styles.logo}>
+            <span className={styles.logoText}>Skribble</span>
             <span className={styles.logoX}>X</span>
-            <span className={styles.logoText}>SkribbleX</span>
           </div>
           <div className={styles.headerCenter}>
             <span className={styles.roomLabel}>Room</span>
-            <span className={styles.roomID}>{room.roomID}</span>
+            <span
+              className={styles.roomID}
+              onClick={() => copyToClipboard(room.roomID)}
+            >
+              {room.roomID}
+            </span>
           </div>
           <button className={styles.leaveBtn} onClick={onLeave}>
-            ✕ Leave
+            ✕
           </button>
         </header>
 

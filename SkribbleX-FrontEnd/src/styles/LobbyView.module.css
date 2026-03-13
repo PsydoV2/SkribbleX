@@ -76,7 +76,7 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--text-muted);
 }
 
 .roomID {
@@ -105,8 +105,8 @@
 }
 
 .leaveBtn:hover {
-  color: var(--danger);
-  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger-border);
+  background: color-mix(in srgb, var(--danger) 50%, transparent);
 }
 
 /* ── Left col — Players ──────────────────────────────────────────────────── */
@@ -136,8 +136,8 @@
   align-items: center;
   justify-content: center;
   width: 1.35rem;
-  height: 1.35rem;
-  border-radius: 50%;
+  aspect-ratio: 1/1;
+  border-radius: 100%;
   background: var(--border-muted);
   font-size: 0.68rem;
   color: var(--text);
@@ -212,7 +212,7 @@
 
 .startBtn {
   padding: 0.65rem 2rem;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   background: var(--primary);
   color: var(--bg-dark);
   font-size: 0.95rem;

@@ -1,7 +1,7 @@
 # 📌 **README.md – SkribbleX**
 
 <p align="center">
-  <img src="assets/logo.png" width="120" alt="SkribbleX Logo"/>
+  <img src="./SkribbleX-FrontEnd/public/SkribbleX.png" width="120" alt="SkribbleX Logo"/>
 </p>
 
 <h1 align="center">SkribbleX 🎨✏️</h1>

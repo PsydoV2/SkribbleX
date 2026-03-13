@@ -1,0 +1,78 @@
+/* src/components/lobby/PlayerCard.module.css */
+.card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-light);
+  border: 1px solid transparent;
+
+  transition:
+    border-color var(--t-base),
+    background var(--t-base);
+}
+
+.card.self {
+  border-color: var(--primary);
+  background: var(--primary-dim);
+}
+
+.card.drawer {
+  border-color: var(--secondary);
+  background: var(--secondary-dim);
+}
+
+.avatarWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.avatar {
+  border-radius: 50%;
+  display: block;
+}
+
+.badge {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  font-size: 0.65rem;
+  line-height: 1;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+.you {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+}
+
+.score {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.guessed {
+  color: var(--success-border);
+  font-size: 0.9rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}

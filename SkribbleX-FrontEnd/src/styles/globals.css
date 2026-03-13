@@ -2,21 +2,61 @@
 
 /* ─── Design Tokens ──────────────────────────────────────────────────────── */
 :root {
+  /* Backgrounds */
   --bg-dark: #030303;
   --bg: hsl(300 0% 8%);
   --bg-light: hsl(0 0% 12%);
+  --bg-raised: hsl(0 0% 15%);
+
+  /* Text */
   --text: hsl(300 0% 95%);
   --text-muted: hsl(300 0% 60%);
-  --highlight: hsl(330 0% 39%);
+  --text-dim: hsl(300 0% 40%);
+
+  /* Borders */
   --border: hsl(0 0% 28%);
   --border-muted: hsl(300 0% 18%);
+
+  /* Brand */
   --primary: hsl(48, 100%, 51%);
+  --primary-dim: color-mix(in srgb, var(--primary) 15%, transparent);
   --secondary: hsl(221, 81%, 46%);
-  --danger: hsl(42, 100%, 50%);
-  --warning: hsl(0, 100%, 61%);
+  --secondary-dim: color-mix(in srgb, var(--secondary) 15%, transparent);
+
+  /* Semantic */
+  --danger: hsl(0, 100%, 61%);
+  --warning: hsl(42, 100%, 50%);
   --success: rgb(24 65 1 / 0.7);
   --success-border: rgb(45, 124, 0);
   --info: hsl(195, 100%, 59%);
+
+  /* Layout */
+  --frame-max-w: 1200px;
+  --frame-min-w: 800px;
+  --frame-h: 600px;
+  --topbar-h: 50px;
+  --col-side: 0.2fr;
+  --col-center: 0.6fr;
+  --panel-pad: 1rem;
+  --panel-pad-lg: 1.25rem;
+
+  /* Radii */
+  --radius-sm: 0.4rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Transitions */
+  --t-fast: 0.12s ease;
+  --t-base: 0.15s ease;
+  --t-slow: 0.25s ease;
+
+  /* Shadows / glows */
+  --glow-primary: 0 0 10px 1px var(--primary);
+  --glow-danger: 0 0 10px 1px var(--danger);
+  --glow-success: 0 0 10px 1px var(--success-border);
+  --glow-info: 0 0 10px 1px var(--info);
+  --glow-warning: 0 0 10px 1px var(--warning);
 }
 
 /* ─── Reset ──────────────────────────────────────────────────────────────── */
@@ -26,7 +66,6 @@
   box-sizing: border-box;
   padding: 0;
   margin: 0;
-  /* Inherits color from parent — avoids the "everything is --text" override */
 }
 
 /* ─── Base ───────────────────────────────────────────────────────────────── */
@@ -43,7 +82,6 @@ html {
     100% 100%,
     20px 20px,
     20px 20px;
-  background-blend-mode: normal;
 }
 
 body {
@@ -67,6 +105,61 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+button {
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: none;
+  cursor: pointer;
+}
+
+/* ─── Shared component patterns ──────────────────────────────────────────── */
+
+/* Pill toggle button — used in Lobby settings and toolbars */
+.pill {
+  padding: 0.3rem 0.75rem;
+  border-radius: 2rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  background: var(--bg-light);
+  color: var(--text-muted);
+  cursor: pointer;
+  border: 1px solid var(--border-muted);
+  transition:
+    background var(--t-fast),
+    color var(--t-fast),
+    border-color var(--t-fast);
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.pill:hover:not(:disabled) {
+  background: var(--border-muted);
+  color: var(--text);
+}
+
+.pill.pillActive {
+  background: var(--primary-dim);
+  color: var(--primary);
+  border-color: var(--primary);
+  font-weight: 700;
+}
+
+.pill:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+/* Section label — small all-caps header above a block */
+.sectionLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 
 /* ─── Utility ────────────────────────────────────────────────────────────── */

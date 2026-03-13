@@ -8,7 +8,7 @@ let socket: Socket | null = null;
 
 export function getSocket(): Socket {
   if (!socket) {
-    const url = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+    const url = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080";
 
     socket = io(url, {
       autoConnect: true,

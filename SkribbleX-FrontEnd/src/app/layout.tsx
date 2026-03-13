@@ -6,6 +6,9 @@ import { ToastProvider } from "@/hooks/ToastContext";
 export const metadata: Metadata = {
   title: "SkribbleX",
   description: "A fast, modern multiplayer drawing & guessing game.",
+  icons: {
+    icon: "/SkribbleX.png",
+  },
 };
 
 export default function RootLayout({

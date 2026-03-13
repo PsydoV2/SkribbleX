@@ -1,0 +1,239 @@
+/* src/components/lobby/LobbyView.module.css */
+
+/* ── Shell — full viewport, centered frame ───────────────────────────────── */
+.lobbyPage {
+  min-height: 100vh;
+  width: 100%;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding: 2rem;
+}
+
+.lobbyFrame {
+  width: 100%;
+  max-width: var(--frame-max-w);
+  min-width: var(--frame-min-w);
+
+  background: var(--bg);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+
+  display: grid;
+  grid-template-rows: var(--topbar-h) 1fr auto;
+  grid-template-columns: var(--col-side) 1fr;
+  height: var(--frame-h);
+}
+
+/* ── Header — full width ─────────────────────────────────────────────────── */
+.header {
+  grid-column: 1 / -1;
+  grid-row: 1;
+
+  height: var(--topbar-h);
+  border-bottom: 1px solid var(--border-muted);
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--panel-pad);
+  gap: 1rem;
+}
+
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.logoX {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--primary);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.logoText {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.headerCenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.05rem;
+}
+
+.roomLabel {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.roomID {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--primary);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition: opacity var(--t-fast);
+}
+
+.roomID:hover {
+  opacity: 0.75;
+}
+
+.leaveBtn {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-sm);
+  transition:
+    color var(--t-base),
+    background var(--t-base);
+  flex-shrink: 0;
+}
+
+.leaveBtn:hover {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+
+/* ── Left col — Players ──────────────────────────────────────────────────── */
+.playersSide {
+  grid-row: 2 / 4;
+  grid-column: 1;
+
+  border-right: 1px solid var(--border-muted);
+  padding: var(--panel-pad-lg);
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  overflow-y: auto;
+}
+
+.sectionTitle {
+  /* composes: sectionLabel from global; */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.15rem;
+}
+
+.count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: var(--border-muted);
+  font-size: 0.68rem;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.playerList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.waitingHint {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+/* ── Right col — Settings ────────────────────────────────────────────────── */
+.settingsSide {
+  grid-row: 2;
+  grid-column: 2;
+
+  padding: var(--panel-pad-lg);
+  overflow-y: auto;
+
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.settingBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settingLabel {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* pill styles come from globals */
+
+.hostNote {
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-top: 0.25rem;
+}
+
+/* ── Footer — Start button ───────────────────────────────────────────────── */
+.footer {
+  grid-row: 3;
+  grid-column: 2;
+
+  padding: var(--panel-pad);
+  border-top: 1px solid var(--border-muted);
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.startBtn {
+  padding: 0.65rem 2rem;
+  border-radius: var(--radius-lg);
+  background: var(--primary);
+  color: var(--bg-dark);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  transition:
+    opacity var(--t-base),
+    transform var(--t-fast);
+}
+
+.startBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.startBtn:not(:disabled):hover {
+  opacity: 0.88;
+}
+
+.waitingForHost {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  font-style: italic;
+}

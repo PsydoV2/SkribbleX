@@ -1,6 +1,7 @@
+/* src/styles/SelectMenu.module.css */
 .selectMenuWrapper {
   background-color: var(--bg);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
   padding: 2rem;
 
   position: absolute;
@@ -25,12 +26,12 @@
   align-items: center;
 
   background-color: var(--bg-light);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   padding: 1rem;
   text-align: center;
 
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--t-base);
 }
 
 .smCon p {
@@ -41,6 +42,7 @@
   background-color: var(--border-muted);
 }
 
+/* Join sub-panel */
 .smJoinCon {
   display: flex;
   justify-content: center;
@@ -60,7 +62,7 @@
 
 .smJoinCon button {
   background-color: var(--secondary);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   font-size: large;
   display: flex;
   justify-content: center;
@@ -68,7 +70,7 @@
   height: 52px;
   width: 44px;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color var(--t-base);
 }
 
 .smJoinCon button:last-of-type {
@@ -92,14 +94,14 @@
   height: 50px !important;
   width: 40px !important;
   background-color: var(--border-muted);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   text-align: center;
   font-size: 1.4rem;
   font-weight: 600;
   color: var(--text);
   transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease,
+    border-color var(--t-slow),
+    background-color var(--t-slow),
     transform 0.12s ease;
   margin-right: 1rem;
 }
@@ -118,8 +120,12 @@
 }
 
 @keyframes otpPop {
-  from { transform: scale(0.85); }
-  to   { transform: scale(1); }
+  from {
+    transform: scale(0.85);
+  }
+  to {
+    transform: scale(1);
+  }
 }
 
 .otpDone {
@@ -129,5 +135,5 @@
 .otpError .otpInput {
   border-color: var(--danger);
   background-color: rgba(255, 0, 0, 0.1);
-  box-shadow: 0 0 8px rgba(255, 0, 0, 0.35);
+  box-shadow: var(--glow-danger);
 }

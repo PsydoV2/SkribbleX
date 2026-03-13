@@ -1,0 +1,96 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap");
+@import "./Player.css";
+@import "./SelectMenu.css";
+@import "./Toast.css";
+@import "./StatusWrapper.css";
+@import "./GamePage.css";
+
+:root {
+  --bg-dark: #030303;
+  --bg: hsl(300 0% 8%);
+  --bg-light: hsl(0 0% 12%);
+  --text: hsl(300 0% 95%);
+  --text-muted: hsl(300 0% 60%);
+  --highlight: hsl(330 0% 39%);
+  --border: hsl(0 0% 28%);
+  --border-muted: hsl(300 0% 18%);
+  --primary: hsl(48, 100%, 51%);
+  --secondary: hsl(221, 81%, 46%);
+  --danger: hsl(42, 100%, 50%);
+  --warning: hsl(0, 100%, 61%);
+  --success: rgb(24, 65, 1, 0.7);
+  --success-border: rgb(45, 124, 0);
+  --info: hsl(195, 100%, 59%);
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
+
+.roboto {
+  font-family: "Roboto", sans-serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+  font-variation-settings: "wdth" 100;
+}
+
+html {
+  min-height: 100%;
+  background-color: var(--bg-dark);
+
+  background-image:
+    radial-gradient(transparent, var(--bg-dark)),
+    linear-gradient(var(--bg) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg) 1px, transparent 1px);
+  background-size:
+    100% 100%,
+    /* radial */ 20px 20px,
+    20px 20px;
+
+  background-blend-mode: normal;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+* {
+  color: var(--text);
+  font-family: "Roboto", sans-serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+  font-variation-settings: "wdth" 100;
+
+  transition: 0.1s ease-in-out 0s;
+
+  outline: 0;
+  border: 0;
+}

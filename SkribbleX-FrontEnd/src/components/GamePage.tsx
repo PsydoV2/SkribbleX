@@ -1,6 +1,7 @@
 import { useToast } from "../hooks/ToastContext";
 import { motion } from "framer-motion";
 import Player from "./Player";
+import "@/styles/GamePage.css";
 
 interface GamePageProps {
   roomID: string;

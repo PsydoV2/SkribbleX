@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 import { FaChevronRight } from "react-icons/fa6";
 import OtpInput from "react-otp-input";

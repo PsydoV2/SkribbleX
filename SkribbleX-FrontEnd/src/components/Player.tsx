@@ -1,3 +1,6 @@
+import "@/styles/Player.css";
+import Image from "next/image";
+
 interface PlayerProps {
   name: string;
   isHost: boolean;
@@ -8,7 +11,7 @@ interface PlayerProps {
 export default function Player(props: PlayerProps) {
   return (
     <div className="player">
-      <img className="playerPic" src={props.profilePic}></img>
+      <Image className="playerPic" src={props.profilePic} alt="" />
       <div className="playerInfoWrapper">
         <p>{props.name}</p>
         <span>{props.points}</span>

@@ -1,5 +1,5 @@
 // SocketService.ts
-import { socket } from "../socket";
+import { socket } from "@/socket";
 
 type CreateRoomResponse = {
   ok: boolean;
@@ -46,7 +46,7 @@ export class SocketService {
           }
 
           resolve();
-        }
+        },
       );
     });
   }

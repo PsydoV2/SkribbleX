@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
-import { socket } from "./socket";
-import ConnectionStatus from "./components/ConnectionStatus";
-import SelectMenu from "./components/SelectMenu";
-import GamePage from "./components/GamePage";
-import { socketService } from "./service/socket.service";
-import { useToast } from "./hooks/ToastContext";
+"use client";
 
-function App() {
+import ConnectionStatus from "@/components/ConnectionStatus";
+import GamePage from "@/components/GamePage";
+import SelectMenu from "@/components/SelectMenu";
+import { useToast } from "@/hooks/ToastContext";
+import { useEffect, useState } from "react";
+import { socket } from "@/socket";
+import { socketService } from "@/service/socket.service";
+
+export default function Game() {
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [roomID, setRoomID] = useState("");
   const { showToast } = useToast();
@@ -65,5 +67,3 @@ function App() {
     </>
   );
 }
-
-export default App;

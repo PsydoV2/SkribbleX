@@ -1,4 +1,5 @@
 // ToastContext.tsx
+"use client";
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -30,7 +31,7 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
       }, duration * 1000);
     },
-    []
+    [],
   );
 
   return (
@@ -57,8 +58,6 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-// WICHTIG: richtige Definition + Hook-Name beginnt mit "use"
-// eslint-disable-next-line react-refresh/only-export-components
 export const useToast = (): ToastContextType => {
   const ctx = useContext(ToastContext);
   if (!ctx) {

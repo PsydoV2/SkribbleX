@@ -3,6 +3,7 @@
 @import "./statusWrapper.css";
 @import "./toast.css";
 @import "./gamePage.css";
+@import "./player.css";
 
 .roboto {
   font-family: "Roboto", sans-serif;

@@ -1,0 +1,22 @@
+@import "./variables.css";
+
+.player {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  height: 50px;
+  max-width: 100%;
+
+  background-color: var(--bg-light);
+
+  border-radius: 0.5rem;
+
+  padding: 0rem 1rem;
+}
+
+.player .playerPic {
+  height: 40px;
+  aspect-ratio: 1/1;
+  border-radius: 100%;
+}

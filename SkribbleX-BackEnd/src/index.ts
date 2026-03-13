@@ -54,16 +54,6 @@ if (process.env.NODE_ENV === "localhost") {
   server.listen(HTTPSPORT, () => {
     console.log(`🚀 HTTPS running on ${HTTPSPORT}`);
   });
-
-  http
-    .createServer((req, res) => {
-      const host = req.headers.host || "";
-      res.writeHead(301, { Location: `https://${host}${req.url}` });
-      res.end();
-    })
-    .listen(HTTPPORT, () => {
-      console.log(`➡️  Redirect HTTP ${HTTPPORT} → HTTPS ${HTTPSPORT}`);
-    });
 }
 
 initSocket(server);

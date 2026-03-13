@@ -1,37 +1,317 @@
 // src/services/room.service.ts
-import { nanoid, customAlphabet } from "nanoid";
-import { RoomState } from "../types/RoomState";
+import { customAlphabet } from "nanoid";
+import type { RoomState } from "../types/RoomState";
+import type { Player } from "../types/Player";
+import { WordService, type Language } from "./word.service";
 
-type JoinRoomPayload = { roomID: string; socketId: string };
 const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const nano = customAlphabet(alphabet, 6);
 
-export async function createRoom() {
-  // DB-Insert etc.
-  const roomID: string = nano(); // z.B. "9GZ2KD"
+const ROUND_DURATION_MS = 80_000;
 
-  console.debug("Creating room with ID: ", roomID);
+const rooms = new Map<string, RoomState>();
 
+// ─── Room erstellen ───────────────────────────────────────────────────────────
+
+export function createRoom(): string {
+  const roomID = nano();
+
+  rooms.set(roomID, {
+    roomID,
+    players: {},
+    hostId: null,
+    drawerId: null,
+    word: null,
+    round: 0,
+    maxRounds: 3,
+    roundDurationMs: ROUND_DURATION_MS,
+    phase: "lobby",
+    guessedPlayerIds: new Set(),
+    roundStartedAt: null,
+    roundTimerHandle: null,
+    language: "de",
+    categories: WordService.getCategories("de"), // alle Kategorien als Default
+  });
+
+  console.debug(`[room] Created: ${roomID}`);
   return roomID;
 }
 
-export async function joinRoom(payload: JoinRoomPayload) {
-  // DB-Check, Pin prüfen, User in Room eintragen ...
-  console.debug("Joining room with ID: ", payload.roomID);
-  // return { id: payload.roomId, userId: "..." };
+// ─── Room abrufen ─────────────────────────────────────────────────────────────
+
+export function getRoom(roomID: string): RoomState | undefined {
+  return rooms.get(roomID);
 }
 
-export async function saveMessage(args: {
-  roomId: string;
-  message: string;
+// ─── Lobby-Einstellungen ändern (nur Host) ────────────────────────────────────
+
+export function updateSettings(payload: {
+  roomID: string;
   socketId: string;
-}) {
-  // Nachricht speichern, Daten vorbereiten
+  language?: Language;
+  categories?: string[];
+  maxRounds?: number;
+}): RoomState {
+  const room = rooms.get(payload.roomID);
+  if (!room) throw { status: 404, message: "Room not found" };
+  if (room.hostId !== payload.socketId)
+    throw { status: 403, message: "Only the host can change settings" };
+  if (room.phase !== "lobby")
+    throw { status: 400, message: "Settings can only be changed in lobby" };
+
+  if (payload.language) {
+    room.language = payload.language;
+    // Kategorien auf neue Sprache zurücksetzen wenn keine explizit angegeben
+    if (!payload.categories) {
+      room.categories = WordService.getCategories(payload.language);
+    }
+  }
+
+  if (payload.categories) {
+    const available = WordService.getCategories(room.language);
+    const valid = payload.categories.filter((c) => available.includes(c));
+    if (valid.length === 0)
+      throw { status: 400, message: "No valid categories selected" };
+    room.categories = valid;
+  }
+
+  if (payload.maxRounds !== undefined) {
+    if (payload.maxRounds < 1 || payload.maxRounds > 10)
+      throw { status: 400, message: "maxRounds must be between 1 and 10" };
+    room.maxRounds = payload.maxRounds;
+  }
+
+  return room;
+}
+
+// ─── Spieler beitreten ────────────────────────────────────────────────────────
+
+export function joinRoom(payload: {
+  roomID: string;
+  socketId: string;
+  playerID: string;
+  name: string;
+}): RoomState {
+  const room = rooms.get(payload.roomID);
+  if (!room) throw { status: 404, message: "Room not found" };
+  if (room.phase !== "lobby")
+    throw { status: 400, message: "Game already started" };
+
+  const alreadyIn = Object.values(room.players).some(
+    (p) => p.playerID === payload.playerID,
+  );
+  if (alreadyIn) throw { status: 409, message: "Already in room" };
+
+  const player: Player = {
+    playerID: payload.playerID,
+    socketId: payload.socketId,
+    name: payload.name.trim().slice(0, 32),
+    score: 0,
+    hasGuessed: false,
+  };
+
+  room.players[payload.socketId] = player;
+  if (!room.hostId) room.hostId = payload.socketId;
+
+  console.debug(`[room] ${player.name} joined ${payload.roomID}`);
+  return room;
+}
+
+// ─── Spieler verlassen ────────────────────────────────────────────────────────
+
+export function leaveRoom(roomID: string, socketId: string): RoomState | null {
+  const room = rooms.get(roomID);
+  if (!room) return null;
+
+  delete room.players[socketId];
+
+  if (room.hostId === socketId) {
+    const remaining = Object.keys(room.players);
+    room.hostId = remaining[0] ?? null;
+  }
+
+  if (Object.keys(room.players).length === 0) {
+    clearRoundTimer(room);
+    rooms.delete(roomID);
+    console.debug(`[room] Deleted empty room: ${roomID}`);
+    return null;
+  }
+
+  console.debug(`[room] Socket ${socketId} left ${roomID}`);
+  return room;
+}
+
+// ─── Spiel starten ────────────────────────────────────────────────────────────
+
+export type RoundEndCallback = (
+  roomID: string,
+  word: string,
+  isGameEnd: boolean,
+) => void;
+
+export function startGame(
+  roomID: string,
+  socketId: string,
+  onRoundEnd: RoundEndCallback,
+): RoomState {
+  const room = rooms.get(roomID);
+  if (!room) throw { status: 404, message: "Room not found" };
+  if (room.hostId !== socketId)
+    throw { status: 403, message: "Only the host can start the game" };
+  if (Object.keys(room.players).length < 2)
+    throw { status: 400, message: "Need at least 2 players" };
+  if (room.phase !== "lobby")
+    throw { status: 400, message: "Game already started" };
+
+  return startNextRound(room, onRoundEnd);
+}
+
+// ─── Runde starten (intern) ───────────────────────────────────────────────────
+
+function startNextRound(
+  room: RoomState,
+  onRoundEnd: RoundEndCallback,
+): RoomState {
+  const playerIds = Object.keys(room.players);
+
+  clearRoundTimer(room);
+
+  room.round += 1;
+  room.phase = "playing";
+  room.word = WordService.getRandomWord(room.language, room.categories); // ← Sprache + Kategorien
+  room.guessedPlayerIds = new Set();
+  room.roundStartedAt = Date.now();
+
+  const drawerIndex = (room.round - 1) % playerIds.length;
+  room.drawerId = playerIds[drawerIndex];
+
+  for (const p of Object.values(room.players)) {
+    p.hasGuessed = false;
+  }
+
+  room.roundTimerHandle = setTimeout(() => {
+    if (room.phase !== "playing") return;
+    const word = room.word!;
+    const isGameEnd = endRound(room);
+    onRoundEnd(room.roomID, word, isGameEnd);
+  }, room.roundDurationMs);
+
+  console.debug(
+    `[room] Round ${room.round} started in ${room.roomID}, drawer: ${room.drawerId}`,
+  );
+  return room;
+}
+
+// ─── Guess verarbeiten ────────────────────────────────────────────────────────
+
+export type GuessResult = "correct" | "wrong" | "already_guessed" | "drawer";
+
+export function processGuess(payload: {
+  roomID: string;
+  socketId: string;
+  guess: string;
+}): { result: GuessResult; room: RoomState; roundOver: boolean } {
+  const room = rooms.get(payload.roomID);
+  if (!room) throw { status: 404, message: "Room not found" };
+  if (room.phase !== "playing")
+    throw { status: 400, message: "Game is not running" };
+
+  if (room.drawerId === payload.socketId)
+    return { result: "drawer", room, roundOver: false };
+
+  if (room.guessedPlayerIds.has(payload.socketId))
+    return { result: "already_guessed", room, roundOver: false };
+
+  const guess = payload.guess.trim().slice(0, 100);
+  const isCorrect = guess.toLowerCase() === room.word?.toLowerCase();
+
+  if (isCorrect) {
+    room.guessedPlayerIds.add(payload.socketId);
+    room.players[payload.socketId].hasGuessed = true;
+    room.players[payload.socketId].score += calculateGuesserScore(room);
+
+    const nonDrawers = Object.keys(room.players).filter(
+      (id) => id !== room.drawerId,
+    );
+    const allGuessed = room.guessedPlayerIds.size >= nonDrawers.length;
+
+    if (allGuessed) {
+      awardDrawerPoints(room);
+      endRound(room);
+      return { result: "correct", room, roundOver: true };
+    }
+
+    return { result: "correct", room, roundOver: false };
+  }
+
+  return { result: "wrong", room, roundOver: false };
+}
+
+// ─── Runde beenden ────────────────────────────────────────────────────────────
+
+export function endRound(room: RoomState): boolean {
+  clearRoundTimer(room);
+  const isGameEnd = room.round >= room.maxRounds;
+  room.phase = isGameEnd ? "gameEnd" : "roundEnd";
+  return isGameEnd;
+}
+
+export function nextRound(
+  roomID: string,
+  onRoundEnd: RoundEndCallback,
+): RoomState {
+  const room = rooms.get(roomID);
+  if (!room) throw { status: 404, message: "Room not found" };
+  return startNextRound(room, onRoundEnd);
+}
+
+// ─── Score berechnen ─────────────────────────────────────────────────────────
+
+function calculateGuesserScore(room: RoomState): number {
+  if (!room.roundStartedAt) return 100;
+  const elapsed = Date.now() - room.roundStartedAt;
+  const ratio = Math.max(0, 1 - elapsed / room.roundDurationMs);
+  return Math.round(50 + ratio * 100);
+}
+
+function awardDrawerPoints(room: RoomState): void {
+  if (!room.drawerId || !room.players[room.drawerId]) return;
+  const nonDrawers = Object.keys(room.players).filter(
+    (id) => id !== room.drawerId,
+  );
+  const guessedRatio = room.guessedPlayerIds.size / nonDrawers.length;
+  room.players[room.drawerId].score += Math.round(guessedRatio * 100);
+}
+
+// ─── Timer aufräumen ─────────────────────────────────────────────────────────
+
+function clearRoundTimer(room: RoomState): void {
+  if (room.roundTimerHandle) {
+    clearTimeout(room.roundTimerHandle);
+    room.roundTimerHandle = null;
+  }
+}
+
+// ─── Serialisierbare Room-Daten (ohne Wort!) ──────────────────────────────────
+
+export function getRoomPublic(room: RoomState) {
+  const timeLeftMs =
+    room.phase === "playing" && room.roundStartedAt
+      ? Math.max(0, room.roundDurationMs - (Date.now() - room.roundStartedAt))
+      : null;
+
   return {
-    id: "msg-id",
-    roomId: args.roomId,
-    text: args.message,
-    fromSocket: args.socketId,
-    createdAt: new Date().toISOString(),
+    roomID: room.roomID,
+    players: Object.values(room.players),
+    hostId: room.hostId,
+    drawerId: room.drawerId,
+    round: room.round,
+    maxRounds: room.maxRounds,
+    phase: room.phase,
+    wordLength: room.word?.length ?? null,
+    timeLeftMs,
+    language: room.language,
+    categories: room.categories,
+    availableCategories: WordService.getCategories(room.language), // für die Lobby-UI
   };
 }

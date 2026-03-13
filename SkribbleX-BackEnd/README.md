@@ -1,184 +1,206 @@
-# 🚀 Express + TypeScript Backend Template
+# SkribbleX — Backend
 
-A generic backend starter template built with **Express**, **TypeScript**, and **MySQL**.
-Includes authentication, user management, middleware, environment validation, logging, and security best practices.
+> Node.js + TypeScript + Socket.io backend for the SkribbleX Discord Activity.
 
 ---
 
-## 📂 Project Structure
+## Overview
+
+The SkribbleX backend manages all real-time game logic entirely in memory — no database required. It handles lobbies, rounds, drawing sessions, guesses, and scoring via Socket.io, and is designed to be self-hosted on any VPS or root server behind a reverse proxy.
+
+---
+
+## Tech Stack
+
+- **Runtime:** Node.js
+- **Language:** TypeScript
+- **Framework:** Express
+- **Real-time:** Socket.io
+- **Game state:** In-memory (`Map<string, RoomState>`)
+- **Word data:** JSON file (`data/words.json`) — 320 words, 8 categories, DE + EN
+
+---
+
+## Project Structure
 
 ```
-src/
-├── config/            # Configuration files (DB connection, etc.)
-│   └── DBConnectionPool.ts
-├── controllers/       # Route controllers (handle HTTP requests)
-│   ├── auth.controller.ts
-│   └── user.controller.ts
-├── middlewares/       # Express middlewares (auth, error, rate limiters)
-│   ├── auth.middleware.ts
-│   ├── error.middleware.ts
-│   ├── globalRateLimiter.middleware.ts
-│   └── rateLimiter.middleware.ts
-├── routes/            # Route definitions
-│   ├── auth.routes.ts
-│   └── user.routes.ts
-├── services/          # Business logic (AuthService, UserService, etc.)
-│   ├── auth.service.ts
-│   └── user.service.ts
-├── types/             # TypeScript types & DTOs
-│   └── user.ts
-├── utils/             # Utilities (EnvValidator, ApiError, JWT, Logger, etc.)
-│   ├── ApiError.ts
-│   ├── EnvValidator.ts
-│   ├── HTTPCodes.ts
-│   ├── JWTToken.ts
-│   └── LogHelper.ts
-└── index.ts           # Main entry point
+SkribbleX-BackEnd/
+├── data/
+│   └── words.json              # 320 words, 8 categories, DE + EN
+├── src/
+│   ├── index.ts                # Entry point — HTTP/HTTPS server + Socket.io init
+│   ├── events/
+│   │   └── room.events.ts      # All Socket.io event handlers
+│   ├── services/
+│   │   ├── room.service.ts     # In-memory game logic
+│   │   └── word.service.ts     # Loads words.json, getRandomWord()
+│   ├── types/
+│   │   ├── RoomState.ts        # GamePhase, language, categories
+│   │   └── Player.ts
+│   ├── middlewares/
+│   │   ├── error.middleware.ts
+│   │   └── globalRateLimiter.middleware.ts
+│   └── utils/
+│       ├── HTTPCodes.ts
+│       ├── EnvValidator.ts
+│       └── LogHelper.ts
+├── tests/
+│   ├── __mocks__/
+│   │   └── nanoid.ts           # CJS-compatible mock (nanoid v5 is ESM-only)
+│   ├── room.service.test.ts    # 71 tests
+│   ├── room.events.test.ts     # 37 tests
+│   └── word.service.test.ts    # 15 tests
+├── jest.config.ts
+├── tsconfig.json
+└── package.json
 ```
 
 ---
 
-## ⚙️ Features
+## Requirements
 
-- ✅ **TypeScript** for type safety
-- ✅ **Express** server with modular routes and controllers
-- ✅ **MySQL2** connection pool
-- ✅ **Authentication (JWT)** with `AuthService` & middleware
-- ✅ **User service** with example `deleteAccount` endpoint
-- ✅ **Middlewares**:
-
-  - Authentication (`auth.middleware.ts`)
-  - Error handling (`error.middleware.ts`)
-  - Global rate limiter (`globalRateLimiter.middleware.ts`)
-  - Route-specific limiter (`rateLimiter.middleware.ts`)
-
-- ✅ **Security**: `helmet`, `cors`, HTTPS support
-- ✅ **Environment validation** with `EnvValidator`
-- ✅ **Logging** (file-based + optional DB logging with `LogHelper`)
-- ✅ **Scalable structure** for future features
+- Node.js >= 18
+- npm >= 9
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-username/express-ts-backend-template.git
-cd express-ts-backend-template
-
-# Install dependencies
+git clone https://github.com/YOURNAME/SkribbleX.git
+cd SkribbleX/SkribbleX-BackEnd
 npm install
 ```
 
 ---
 
-## 🔧 Environment Setup
+## Environment Variables
 
-Create a `.env` file in the project root (see `.env.example`):
+Create a `.env` file in the project root:
 
 ```env
-DBHOST=localhost
-DBPORT=3306
-DBNAME=mydatabase
-DBUSER=myuser
-DBPASSWORD=mypassword
-
-SECRETKEYJWT=supersecretkey
-
-HTTPPORT=9080
+NODE_ENV=localhost
+HTTPPORT=4000
 HTTPSPORT=9444
 ```
 
-> The **EnvValidator** ensures that all required variables are set before the server starts.
+For production (`NODE_ENV=production`), the server expects SSL certificate files in the project root:
+
+```
+key.key
+fullchain.pem
+```
 
 ---
 
-## ▶️ Usage
+## Running the Server
 
-### Development (HTTP, auto-reload)
+**Development (hot reload):**
 
 ```bash
 npm run dev
 ```
 
-### Local build + run (HTTP)
+**Production:**
 
 ```bash
-npm run start:local
+npm run build
+npm start
 ```
 
-### Test / Production (HTTPS)
+The server listens on `http://localhost:4000` in local mode.
+
+---
+
+## Testing
+
+The test suite covers `room.service`, `room.events`, and `word.service` with 123 tests total.
 
 ```bash
-npm run start:test
-npm run start:prod
+npm test            # run once
+npm run test:watch  # watch mode
+```
+
+**Test coverage:**
+
+| File                   | Tests | Covers                                         |
+| ---------------------- | ----- | ---------------------------------------------- |
+| `room.service.test.ts` | 71    | Full game lifecycle, settings, scoring, timers |
+| `room.events.test.ts`  | 37    | All Socket.io events, broadcasts, error paths  |
+| `word.service.test.ts` | 15    | Word loading, categories, fallback, reload     |
+
+---
+
+## Socket.io Events
+
+| Event                    | Direction       | Description                                 |
+| ------------------------ | --------------- | ------------------------------------------- |
+| `room:create`            | Client → Server | Create a new room                           |
+| `room:join`              | Client → Server | Join with `playerID` and `name`             |
+| `room:leave`             | Client → Server | Leave voluntarily                           |
+| `disconnect`             | auto            | Handled via `socketRoomMap`                 |
+| `room:player-joined`     | Server → Client | Broadcast to others in room                 |
+| `room:player-left`       | Server → Client | Broadcast to others in room                 |
+| `room:message`           | Client → Server | Chat message (lobby / roundEnd only)        |
+| `room:message`           | Server → Client | Chat message or wrong guess                 |
+| `lobby:settings`         | Client → Server | Host changes language / categories / rounds |
+| `lobby:settings-updated` | Server → Client | Broadcast updated settings                  |
+| `game:start`             | Client → Server | Host only, min. 2 players                   |
+| `game:round-started`     | Server → Client | New round (word length only, no word)       |
+| `game:word-reveal`       | Server → Client | Sent only to the drawer                     |
+| `game:guess`             | Client → Server | Guess attempt                               |
+| `game:guess-correct`     | Server → Client | Private — sent to the guesser               |
+| `game:player-guessed`    | Server → Client | Broadcast (no word revealed)                |
+| `game:round-ended`       | Server → Client | Word is revealed                            |
+| `game:ended`             | Server → Client | Final scoreboard                            |
+| `draw:stroke`            | Client → Server | Batched stroke data — drawer only           |
+| `draw:clear`             | Client → Server | Clear canvas — drawer only                  |
+
+---
+
+## Word Categories
+
+**German (`de`):** Tiere, Essen & Trinken, Sport, Berufe, Natur, Objekte, Fantasy & Mythologie, Fahrzeuge
+
+**English (`en`):** Animals, Food & Drinks, Sports, Jobs, Nature, Objects, Fantasy & Mythology, Vehicles
+
+40 words per category — 320 total. The host selects one or more categories before the game starts.
+
+---
+
+## Deployment
+
+**Recommended setup:**
+
+- **Process manager:** PM2 or systemd
+- **Reverse proxy:** Caddy or Nginx (WebSocket upgrades required)
+
+Ensure your reverse proxy forwards WebSocket upgrade headers:
+
+```
+Connection: Upgrade
+Upgrade: websocket
+```
+
+**Build for production:**
+
+```bash
+npm run build   # compiles TypeScript + copies data/words.json to dist/
 ```
 
 ---
 
-## 🔐 Authentication Flow
+## Security Notes
 
-- **Register**: `POST /api/register`
-- **Login**: `POST /api/login`
-- Returns a **JWT token** (valid for 1h)
-- Use in requests via `Authorization: Bearer <token>`
-- Example protected route:
-
-  - `POST /api/deleteAccount` → requires valid token
-
----
-
-## 📄 Logging
-
-- Info logs → stored in `/logs/info-YYYY-MM-DD.log`
-- Errors → stored in DB table `ErrorLog` (customize for your schema)
-- Fallback: errors also logged to console
+- Guess input is capped at 100 characters
+- Player names are trimmed and capped at 32 characters
+- Chat messages are capped at 200 characters
+- Only the drawer can send `draw:stroke` and `draw:clear`
+- The secret word never leaves the server — only `wordLength` is sent to non-drawers
+- The host is the only player who can start the game or change settings
 
 ---
 
-## 🚦 Rate Limiting
+## License
 
-- **Global limiter** → 100 requests/minute per IP
-- **Auth routes limiter** → 5 attempts per 5 minutes, blocks for 15 minutes after exceeding
-
----
-
-## 📑 Available Scripts
-
-- `npm run dev` → Start in dev mode (auto-restart, HTTP only)
-- `npm run build` → Compile TypeScript to `dist/`
-- `npm run start` → Run built server
-- `npm run start:local` → Build + run locally via HTTP
-- `npm run start:test` → Build + run in production mode (HTTPS)
-- `npm run start:prod` → Same as above (for live deployment)
-
----
-
-## 🛠️ Technologies Used
-
-- [Express](https://expressjs.com/) – Web framework
-- [TypeScript](https://www.typescriptlang.org/) – Typed JavaScript
-- [MySQL2](https://www.npmjs.com/package/mysql2) – Database driver
-- [jsonwebtoken](https://www.npmjs.com/package/jsonwebtoken) – JWT authentication
-- [bcrypt](https://www.npmjs.com/package/bcrypt) – Password hashing
-- [helmet](https://www.npmjs.com/package/helmet) – Security headers
-- [cors](https://www.npmjs.com/package/cors) – CORS configuration
-- [express-rate-limit](https://www.npmjs.com/package/express-rate-limit) & [rate-limiter-flexible](https://www.npmjs.com/package/rate-limiter-flexible) – Request limiting
-- [dotenv](https://www.npmjs.com/package/dotenv) – Env var management
-
----
-
-## 🧑‍💻 How to Extend
-
-- Add new routes in `src/routes/` and connect them in `index.ts`
-- Add controllers to handle incoming HTTP requests
-- Add services to implement business logic
-- Add new DTOs in `src/types/` for structured data handling
-- Extend `AuthTokenPayload` in `JWTToken.ts` if your JWT should contain more fields
-
----
-
-## 📜 License
-
-This template is licensed under the **MIT License**.
-Feel free to fork and adapt for your own projects.
+MIT — free to use, modify, and self-host.

@@ -1,7 +1,8 @@
-// ToastContext.tsx
+// src/hooks/ToastContext.tsx
 "use client";
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import styles from "@/styles/Toast.module.css";
 
 export type ToastType = "success" | "error" | "info" | "warning";
 
@@ -16,7 +17,6 @@ export type ToastContextType = {
   showToast: (type: ToastType, message: string, duration?: number) => void;
 };
 
-// NICHT exportieren, sonst meckert die Regel
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
@@ -38,12 +38,12 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
     <ToastContext.Provider value={{ showToast }}>
       {children}
 
-      <div className="toast-container">
+      <div className={styles.toastContainer}>
         <AnimatePresence>
           {toasts.map((t) => (
             <motion.div
               key={t.id}
-              className={`toast ${t.type}`}
+              className={`${styles.toast} ${styles[t.type]}`}
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 30 }}
@@ -60,8 +60,6 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useToast = (): ToastContextType => {
   const ctx = useContext(ToastContext);
-  if (!ctx) {
-    throw new Error("useToast must be used inside <ToastProvider />");
-  }
+  if (!ctx) throw new Error("useToast must be used inside <ToastProvider />");
   return ctx;
 };

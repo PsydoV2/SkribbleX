@@ -1,36 +1,40 @@
+// src/components/SelectMenu.tsx
 "use client";
 import { useState } from "react";
 import { FaChevronRight } from "react-icons/fa6";
 import OtpInput from "react-otp-input";
+import styles from "@/styles/SelectMenu.module.css";
 
 interface SelectMenuProps {
   joinRoom: (roomID: string) => Promise<void>;
   createRoom: () => Promise<void>;
 }
 
-export default function SelectMenu(props: SelectMenuProps) {
+export default function SelectMenu({ joinRoom, createRoom }: SelectMenuProps) {
   const [showJoinScreen, setShowJoinScreen] = useState(false);
   const [roomID, setRoomID] = useState("");
 
   return (
-    <div className="selectMenuWrapper">
+    <div className={styles.selectMenuWrapper}>
       {showJoinScreen ? (
-        <div className="smJoinCon">
+        <div className={styles.smJoinCon}>
           <h2>Enter room code</h2>
 
           <OtpInput
             value={roomID.toUpperCase()}
             onChange={setRoomID}
             numInputs={6}
-            renderInput={(props) => (
+            renderInput={(inputProps) => (
               <input
-                {...props}
-                className={`otp-input ${roomID.length === 6 ? "otp-done" : ""}`}
+                {...inputProps}
+                className={`${styles.otpInput} ${
+                  roomID.length === 6 ? styles.otpDone : ""
+                }`}
               />
             )}
           />
 
-          <button onClick={() => props.joinRoom(roomID)}>
+          <button onClick={() => joinRoom(roomID)}>
             <FaChevronRight />
           </button>
 
@@ -38,7 +42,7 @@ export default function SelectMenu(props: SelectMenuProps) {
         </div>
       ) : (
         <>
-          <div className="smLeftCon smCon" onClick={props.createRoom}>
+          <div className={`${styles.smCon}`} onClick={createRoom}>
             <h2>CREATE</h2>
             <p>
               Create your own room and share the code with friends. You set the
@@ -46,7 +50,7 @@ export default function SelectMenu(props: SelectMenuProps) {
             </p>
           </div>
           <div
-            className="smRightCon smCon"
+            className={`${styles.smCon}`}
             onClick={() => setShowJoinScreen(true)}
           >
             <h2>JOIN</h2>

@@ -1,18 +1,19 @@
+// src/components/ConnectionStatus.tsx
+"use client";
+import styles from "@/styles/StatusWrapper.module.css";
+
 interface StatusProps {
   isConnected: boolean;
 }
 
-export default function ConnectionStatus(props: StatusProps) {
+export default function ConnectionStatus({ isConnected }: StatusProps) {
   return (
-    <div className="statusWrapper">
-      {/* <p>Status</p> */}
+    <div className={styles.statusWrapper}>
       <div
-        className={
-          props.isConnected
-            ? "statusCircle connected"
-            : "statusCircle disconnected"
-        }
-      ></div>
+        className={`${styles.statusCircle} ${
+          isConnected ? styles.connected : styles.disconnected
+        }`}
+      />
     </div>
   );
 }

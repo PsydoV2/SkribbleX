@@ -1,9 +1,20 @@
-import { io } from "socket.io-client";
+// src/socket.ts
+// Socket is created lazily (only on the client) to avoid SSR crashes.
+// Import `getSocket()` instead of `socket` directly when you need the instance.
 
-// "undefined" means the URL will be computed from the `window.location` object
-const URL = (process.env.BACKEND_URL as string) ?? "http://localhost:8080";
+import { io, type Socket } from "socket.io-client";
 
-export const socket = io(URL, {
-  reconnection: true,
-  reconnectionAttempts: 5,
-});
+let socket: Socket | null = null;
+
+export function getSocket(): Socket {
+  if (!socket) {
+    const url = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+
+    socket = io(url, {
+      autoConnect: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+    });
+  }
+  return socket;
+}

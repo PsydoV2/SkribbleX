@@ -1,4 +1,4 @@
-"use client";
+// src/app/privacy/page.tsx
 export default function Privacy() {
-  return;
+  return <main>{/* Privacy Policy content goes here */}</main>;
 }

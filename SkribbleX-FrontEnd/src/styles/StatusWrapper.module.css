@@ -1,0 +1,28 @@
+.statusWrapper {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+
+  z-index: 100;
+}
+
+.statusCircle {
+  height: 0.5rem;
+  aspect-ratio: 1 / 1;
+  border-radius: 100%;
+}
+
+.connected {
+  background-color: green;
+  box-shadow: 0 0 10px 1px green;
+}
+
+.disconnected {
+  background-color: red;
+  box-shadow: 0 0 10px 1px red;
+}

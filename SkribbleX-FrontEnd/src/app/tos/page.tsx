@@ -1,4 +1,4 @@
-"use client";
+// src/app/tos/page.tsx
 export default function TOS() {
-  return;
+  return <main>{/* Terms of Service content goes here */}</main>;
 }

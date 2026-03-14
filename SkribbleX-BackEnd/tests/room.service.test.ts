@@ -19,8 +19,26 @@ jest.mock("../src/services/word.service", () => ({
     getRandomWord: jest.fn(() => "Katze"),
     getCategories: jest.fn((lang: string) =>
       lang === "de"
-        ? ["Tiere", "Essen & Trinken", "Sport", "Berufe", "Natur", "Objekte", "Fantasy & Mythologie", "Fahrzeuge"]
-        : ["Animals", "Food & Drinks", "Sports", "Jobs", "Nature", "Objects", "Fantasy & Mythology", "Vehicles"]
+        ? [
+            "Tiere",
+            "Essen & Trinken",
+            "Sport",
+            "Berufe",
+            "Natur",
+            "Objekte",
+            "Fantasy & Mythologie",
+            "Fahrzeuge",
+          ]
+        : [
+            "Animals",
+            "Food & Drinks",
+            "Sports",
+            "Jobs",
+            "Nature",
+            "Objects",
+            "Fantasy & Mythology",
+            "Vehicles",
+          ],
     ),
   },
 }));
@@ -36,7 +54,12 @@ function setupRoomWithPlayers(count: number = 2) {
   const sockets: string[] = [];
   for (let i = 0; i < count; i++) {
     const socketId = `socket-${i}`;
-    joinRoom({ roomID, socketId, playerID: `player-${i}`, name: `Player ${i}` });
+    joinRoom({
+      roomID,
+      socketId,
+      playerID: `player-${i}`,
+      name: `Player ${i}`,
+    });
     sockets.push(socketId);
   }
   return { roomID, sockets };
@@ -155,7 +178,12 @@ describe("joinRoom", () => {
 
   it("wirft 404 wenn Raum nicht existiert", () => {
     expect(() =>
-      joinRoom({ roomID: "NOPE", socketId: "s1", playerID: "p1", name: "Alice" })
+      joinRoom({
+        roomID: "NOPE",
+        socketId: "s1",
+        playerID: "p1",
+        name: "Alice",
+      }),
     ).toThrow(expect.objectContaining({ status: 404 }));
   });
 
@@ -163,7 +191,7 @@ describe("joinRoom", () => {
     const roomID = setupRoom();
     joinRoom({ roomID, socketId: "s1", playerID: "p1", name: "Alice" });
     expect(() =>
-      joinRoom({ roomID, socketId: "s2", playerID: "p1", name: "Alice2" })
+      joinRoom({ roomID, socketId: "s2", playerID: "p1", name: "Alice2" }),
     ).toThrow(expect.objectContaining({ status: 409 }));
   });
 
@@ -171,7 +199,7 @@ describe("joinRoom", () => {
     const { roomID, sockets } = setupRoomWithPlayers(2);
     startGame(roomID, sockets[0], jest.fn());
     expect(() =>
-      joinRoom({ roomID, socketId: "s99", playerID: "p99", name: "Late" })
+      joinRoom({ roomID, socketId: "s99", playerID: "p99", name: "Late" }),
     ).toThrow(expect.objectContaining({ status: 400 }));
   });
 });
@@ -233,14 +261,14 @@ describe("updateSettings", () => {
   it("Host kann Sprache auf Englisch ändern", () => {
     const roomID = setupRoom();
     joinRoom({ roomID, socketId: "s1", playerID: "p1", name: "Alice" });
-    updateSettings({ roomID, socketId: "s1", language: "en" });
+    updateSettings(roomID, "s1", { language: "en" });
     expect(getRoom(roomID)!.language).toBe("en");
   });
 
   it("Kategorien werden beim Sprachwechsel auf neue Sprache zurückgesetzt", () => {
     const roomID = setupRoom();
     joinRoom({ roomID, socketId: "s1", playerID: "p1", name: "Alice" });
-    updateSettings({ roomID, socketId: "s1", language: "en" });
+    updateSettings(roomID, "s1", { language: "en" });
     const room = getRoom(roomID)!;
     expect(room.categories).toContain("Animals");
     expect(room.categories).not.toContain("Tiere");
@@ -249,14 +277,14 @@ describe("updateSettings", () => {
   it("Host kann Kategorien auswählen", () => {
     const roomID = setupRoom();
     joinRoom({ roomID, socketId: "s1", playerID: "p1", name: "Alice" });
-    updateSettings({ roomID, socketId: "s1", categories: ["Tiere", "Sport"] });
+    updateSettings(roomID, "s1", { categories: ["Tiere", "Sport"] });
     expect(getRoom(roomID)!.categories).toEqual(["Tiere", "Sport"]);
   });
 
   it("ungültige Kategorien werden herausgefiltert", () => {
     const roomID = setupRoom();
     joinRoom({ roomID, socketId: "s1", playerID: "p1", name: "Alice" });
-    updateSettings({ roomID, socketId: "s1", categories: ["Tiere", "UNGÜLTIG"] });
+    updateSettings(roomID, "s1", { categories: ["Tiere", "UNGÜLTIG"] });
     expect(getRoom(roomID)!.categories).toEqual(["Tiere"]);
   });
 
@@ -264,37 +292,37 @@ describe("updateSettings", () => {
     const roomID = setupRoom();
     joinRoom({ roomID, socketId: "s1", playerID: "p1", name: "Alice" });
     expect(() =>
-      updateSettings({ roomID, socketId: "s1", categories: ["FAKE1", "FAKE2"] })
+      updateSettings(roomID, "s1", { categories: ["FAKE1", "FAKE2"] }),
     ).toThrow(expect.objectContaining({ status: 400 }));
   });
 
   it("Host kann maxRounds ändern", () => {
     const roomID = setupRoom();
     joinRoom({ roomID, socketId: "s1", playerID: "p1", name: "Alice" });
-    updateSettings({ roomID, socketId: "s1", maxRounds: 5 });
+    updateSettings(roomID, "s1", { maxRounds: 5 });
     expect(getRoom(roomID)!.maxRounds).toBe(5);
   });
 
   it("wirft 400 wenn maxRounds < 1", () => {
     const roomID = setupRoom();
     joinRoom({ roomID, socketId: "s1", playerID: "p1", name: "Alice" });
-    expect(() =>
-      updateSettings({ roomID, socketId: "s1", maxRounds: 0 })
-    ).toThrow(expect.objectContaining({ status: 400 }));
+    expect(() => updateSettings(roomID, "s1", { maxRounds: 0 })).toThrow(
+      expect.objectContaining({ status: 400 }),
+    );
   });
 
   it("wirft 400 wenn maxRounds > 10", () => {
     const roomID = setupRoom();
     joinRoom({ roomID, socketId: "s1", playerID: "p1", name: "Alice" });
-    expect(() =>
-      updateSettings({ roomID, socketId: "s1", maxRounds: 11 })
-    ).toThrow(expect.objectContaining({ status: 400 }));
+    expect(() => updateSettings(roomID, "s1", { maxRounds: 11 })).toThrow(
+      expect.objectContaining({ status: 400 }),
+    );
   });
 
   it("wirft 403 wenn Nicht-Host Settings ändert", () => {
     const { roomID } = setupRoomWithPlayers(2);
     expect(() =>
-      updateSettings({ roomID, socketId: "socket-1", language: "en" })
+      updateSettings(roomID, "socket-1", { language: "en" }),
     ).toThrow(expect.objectContaining({ status: 403 }));
   });
 
@@ -302,20 +330,24 @@ describe("updateSettings", () => {
     const { roomID, sockets } = setupRoomWithPlayers(2);
     startGame(roomID, sockets[0], jest.fn());
     expect(() =>
-      updateSettings({ roomID, socketId: sockets[0], language: "en" })
+      updateSettings(roomID, sockets[0], { language: "en" }),
     ).toThrow(expect.objectContaining({ status: 400 }));
   });
 
   it("wirft 404 wenn Raum nicht existiert", () => {
-    expect(() =>
-      updateSettings({ roomID: "NOPE", socketId: "s1", language: "en" })
-    ).toThrow(expect.objectContaining({ status: 404 }));
+    expect(() => updateSettings("NOPE", "s1", { language: "en" })).toThrow(
+      expect.objectContaining({ status: 404 }),
+    );
   });
 
   it("mehrere Settings gleichzeitig ändern", () => {
     const roomID = setupRoom();
     joinRoom({ roomID, socketId: "s1", playerID: "p1", name: "Alice" });
-    updateSettings({ roomID, socketId: "s1", language: "en", categories: ["Animals"], maxRounds: 5 });
+    updateSettings(roomID, "s1", {
+      language: "en",
+      categories: ["Animals"],
+      maxRounds: 5,
+    });
     const room = getRoom(roomID)!;
     expect(room.language).toBe("en");
     expect(room.categories).toEqual(["Animals"]);
@@ -360,13 +392,15 @@ describe("startGame", () => {
 
   it("hasGuessed aller Spieler ist false", () => {
     const { room } = setupStartedGame();
-    Object.values(room.players).forEach((p) => expect(p.hasGuessed).toBe(false));
+    Object.values(room.players).forEach((p) =>
+      expect(p.hasGuessed).toBe(false),
+    );
   });
 
   it("wirft 403 wenn Nicht-Host startet", () => {
     const { roomID, sockets } = setupRoomWithPlayers(2);
     expect(() => startGame(roomID, sockets[1], jest.fn())).toThrow(
-      expect.objectContaining({ status: 403 })
+      expect.objectContaining({ status: 403 }),
     );
   });
 
@@ -374,7 +408,7 @@ describe("startGame", () => {
     const roomID = setupRoom();
     joinRoom({ roomID, socketId: "s1", playerID: "p1", name: "Alice" });
     expect(() => startGame(roomID, "s1", jest.fn())).toThrow(
-      expect.objectContaining({ status: 400 })
+      expect.objectContaining({ status: 400 }),
     );
   });
 
@@ -382,13 +416,13 @@ describe("startGame", () => {
     const { roomID, sockets } = setupRoomWithPlayers(2);
     startGame(roomID, sockets[0], jest.fn());
     expect(() => startGame(roomID, sockets[0], jest.fn())).toThrow(
-      expect.objectContaining({ status: 400 })
+      expect.objectContaining({ status: 400 }),
     );
   });
 
   it("wirft 404 wenn Raum nicht existiert", () => {
     expect(() => startGame("NOPE", "s1", jest.fn())).toThrow(
-      expect.objectContaining({ status: 404 })
+      expect.objectContaining({ status: 404 }),
     );
   });
 
@@ -396,7 +430,11 @@ describe("startGame", () => {
     jest.useFakeTimers();
     const { onRoundEnd, roomID } = setupStartedGame();
     jest.advanceTimersByTime(80_000);
-    expect(onRoundEnd).toHaveBeenCalledWith(roomID, "Katze", expect.any(Boolean));
+    expect(onRoundEnd).toHaveBeenCalledWith(
+      roomID,
+      "Katze",
+      expect.any(Boolean),
+    );
     jest.useRealTimers();
   });
 
@@ -415,31 +453,51 @@ describe("startGame", () => {
 describe("processGuess", () => {
   it("correct bei richtigem Guess", () => {
     const { roomID, sockets } = setupStartedGame();
-    const { result } = processGuess({ roomID, socketId: getNonDrawer(roomID, sockets), guess: "Katze" });
+    const { result } = processGuess({
+      roomID,
+      socketId: getNonDrawer(roomID, sockets),
+      guess: "Katze",
+    });
     expect(result).toBe("correct");
   });
 
   it("wrong bei falschem Guess", () => {
     const { roomID, sockets } = setupStartedGame();
-    const { result } = processGuess({ roomID, socketId: getNonDrawer(roomID, sockets), guess: "Hund" });
+    const { result } = processGuess({
+      roomID,
+      socketId: getNonDrawer(roomID, sockets),
+      guess: "Hund",
+    });
     expect(result).toBe("wrong");
   });
 
   it("correct ist case-insensitive", () => {
     const { roomID, sockets } = setupStartedGame();
-    const { result } = processGuess({ roomID, socketId: getNonDrawer(roomID, sockets), guess: "KATZE" });
+    const { result } = processGuess({
+      roomID,
+      socketId: getNonDrawer(roomID, sockets),
+      guess: "KATZE",
+    });
     expect(result).toBe("correct");
   });
 
   it("correct trimmt Whitespace", () => {
     const { roomID, sockets } = setupStartedGame();
-    const { result } = processGuess({ roomID, socketId: getNonDrawer(roomID, sockets), guess: "  Katze  " });
+    const { result } = processGuess({
+      roomID,
+      socketId: getNonDrawer(roomID, sockets),
+      guess: "  Katze  ",
+    });
     expect(result).toBe("correct");
   });
 
   it("drawer wenn Drawer rät", () => {
     const { roomID, room } = setupStartedGame();
-    const { result } = processGuess({ roomID, socketId: room.drawerId!, guess: "Katze" });
+    const { result } = processGuess({
+      roomID,
+      socketId: room.drawerId!,
+      guess: "Katze",
+    });
     expect(result).toBe("drawer");
   });
 
@@ -447,7 +505,9 @@ describe("processGuess", () => {
     const { roomID, sockets } = setupStartedGame(3);
     const guesser = getNonDrawer(roomID, sockets);
     processGuess({ roomID, socketId: guesser, guess: "Katze" });
-    expect(processGuess({ roomID, socketId: guesser, guess: "Katze" }).result).toBe("already_guessed");
+    expect(
+      processGuess({ roomID, socketId: guesser, guess: "Katze" }).result,
+    ).toBe("already_guessed");
   });
 
   it("Guesser bekommt Punkte", () => {
@@ -468,33 +528,53 @@ describe("processGuess", () => {
 
   it("Guess wird auf 100 Zeichen begrenzt (kein Crash)", () => {
     const { roomID, sockets } = setupStartedGame();
-    const { result } = processGuess({ roomID, socketId: getNonDrawer(roomID, sockets), guess: "K".repeat(200) });
+    const { result } = processGuess({
+      roomID,
+      socketId: getNonDrawer(roomID, sockets),
+      guess: "K".repeat(200),
+    });
     expect(result).toBe("wrong");
   });
 
   it("roundOver true wenn alle Nicht-Drawer erraten haben", () => {
     const { roomID, sockets } = setupStartedGame(2);
-    const { roundOver } = processGuess({ roomID, socketId: getNonDrawer(roomID, sockets), guess: "Katze" });
+    const { roundOver } = processGuess({
+      roomID,
+      socketId: getNonDrawer(roomID, sockets),
+      guess: "Katze",
+    });
     expect(roundOver).toBe(true);
   });
 
   it("roundOver false wenn noch nicht alle erraten haben", () => {
     const { roomID, sockets } = setupStartedGame(3);
     const nonDrawers = sockets.filter((s) => s !== getRoom(roomID)!.drawerId);
-    const { roundOver } = processGuess({ roomID, socketId: nonDrawers[0], guess: "Katze" });
+    const { roundOver } = processGuess({
+      roomID,
+      socketId: nonDrawers[0],
+      guess: "Katze",
+    });
     expect(roundOver).toBe(false);
   });
 
   it("Phase wechselt zu roundEnd wenn alle erraten haben (nicht letzte Runde)", () => {
     const { roomID, sockets } = setupStartedGame(2);
-    processGuess({ roomID, socketId: getNonDrawer(roomID, sockets), guess: "Katze" });
+    processGuess({
+      roomID,
+      socketId: getNonDrawer(roomID, sockets),
+      guess: "Katze",
+    });
     expect(getRoom(roomID)!.phase).toBe("roundEnd");
   });
 
   it("Drawer bekommt Punkte wenn alle erraten haben", () => {
     const { roomID, sockets } = setupStartedGame(2);
     const drawer = getRoom(roomID)!.drawerId!;
-    processGuess({ roomID, socketId: getNonDrawer(roomID, sockets), guess: "Katze" });
+    processGuess({
+      roomID,
+      socketId: getNonDrawer(roomID, sockets),
+      guess: "Katze",
+    });
     expect(getRoom(roomID)!.players[drawer].score).toBeGreaterThan(0);
   });
 
@@ -509,14 +589,14 @@ describe("processGuess", () => {
 
   it("wirft 404 wenn Raum nicht existiert", () => {
     expect(() =>
-      processGuess({ roomID: "NOPE", socketId: "s1", guess: "Katze" })
+      processGuess({ roomID: "NOPE", socketId: "s1", guess: "Katze" }),
     ).toThrow(expect.objectContaining({ status: 404 }));
   });
 
   it("wirft 400 wenn Spiel nicht läuft", () => {
     const { roomID } = setupRoomWithPlayers(2);
     expect(() =>
-      processGuess({ roomID, socketId: "socket-0", guess: "Katze" })
+      processGuess({ roomID, socketId: "socket-0", guess: "Katze" }),
     ).toThrow(expect.objectContaining({ status: 400 }));
   });
 });
@@ -596,12 +676,14 @@ describe("nextRound", () => {
     const nonDrawers = sockets.filter((s) => s !== getRoom(roomID)!.drawerId);
     processGuess({ roomID, socketId: nonDrawers[0], guess: "Katze" });
     const room = nextRound(roomID, jest.fn());
-    Object.values(room.players).forEach((p) => expect(p.hasGuessed).toBe(false));
+    Object.values(room.players).forEach((p) =>
+      expect(p.hasGuessed).toBe(false),
+    );
   });
 
   it("wirft 404 wenn Raum nicht existiert", () => {
     expect(() => nextRound("NOPE", jest.fn())).toThrow(
-      expect.objectContaining({ status: 404 })
+      expect.objectContaining({ status: 404 }),
     );
   });
 });

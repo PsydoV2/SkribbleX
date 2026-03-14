@@ -12,11 +12,11 @@ const mockReadFileSync = fs.readFileSync as jest.Mock;
 const MOCK_WORDS = {
   de: {
     Tiere: ["Katze", "Hund", "Vogel"],
-    Sport:  ["Fußball", "Tennis"],
+    Sport: ["Fußball", "Tennis"],
   },
   en: {
     Animals: ["Cat", "Dog", "Bird"],
-    Sports:  ["Soccer", "Tennis"],
+    Sports: ["Soccer", "Tennis"],
   },
 };
 
@@ -84,7 +84,9 @@ describe("WordService.getRandomWord", () => {
 
   it("wählt zufällig aus dem Pool (nicht immer dasselbe)", () => {
     const results = new Set(
-      Array.from({ length: 50 }, () => WordService.getRandomWord("de", ["Tiere"]))
+      Array.from({ length: 50 }, () =>
+        WordService.getRandomWord("de", ["Tiere"]),
+      ),
     );
     expect(results.size).toBeGreaterThan(1);
   });
@@ -94,21 +96,27 @@ describe("WordService.getRandomWord", () => {
 
 describe("WordService Fallback", () => {
   it("aktiviert Fallback wenn words.json nicht gelesen werden kann", () => {
-    mockReadFileSync.mockImplementation(() => { throw new Error("File not found"); });
+    mockReadFileSync.mockImplementation(() => {
+      throw new Error("File not found");
+    });
     WordService.reload();
     // Kein Crash – Fallback-Wörter aktiv
     expect(() => WordService.getRandomWord("de", ["Allgemein"])).not.toThrow();
   });
 
   it("Fallback enthält deutsche Wörter", () => {
-    mockReadFileSync.mockImplementation(() => { throw new Error("File not found"); });
+    mockReadFileSync.mockImplementation(() => {
+      throw new Error("File not found");
+    });
     WordService.reload();
     const word = WordService.getRandomWord("de", ["Allgemein"]);
     expect(["Katze", "Hund", "Haus", "Auto", "Baum"]).toContain(word);
   });
 
   it("Fallback enthält englische Wörter", () => {
-    mockReadFileSync.mockImplementation(() => { throw new Error("File not found"); });
+    mockReadFileSync.mockImplementation(() => {
+      throw new Error("File not found");
+    });
     WordService.reload();
     const word = WordService.getRandomWord("en", ["General"]);
     expect(["Cat", "Dog", "House", "Car", "Tree"]).toContain(word);

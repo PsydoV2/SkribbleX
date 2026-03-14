@@ -9,105 +9,120 @@ interface WordEntry {
   category: string;
 }
 
-const CATEGORIES: Record<Language, string[]> = {
-  de: [
-    "Tiere",
-    "Essen & Trinken",
-    "Sport",
-    "Berufe",
-    "Natur",
-    "Objekte",
-    "Fantasy & Mythologie",
-    "Fahrzeuge",
-  ],
-  en: [
-    "Animals",
-    "Food & Drinks",
-    "Sports",
-    "Jobs",
-    "Nature",
-    "Objects",
-    "Fantasy & Mythology",
-    "Vehicles",
-  ],
-};
-
 export class WordService {
   private static words: WordEntry[] = [];
   private static loaded = false;
 
+  // ── Load ──────────────────────────────────────────────────────────────────
+
   private static load(): void {
     if (this.loaded) return;
+    this.reload();
+  }
+
+  /** Public — allows tests to reset state and re-read the mock. */
+  static reload(): void {
+    this.loaded = false;
+    this.words = [];
+
     try {
-      // Try multiple candidate paths — works regardless of cwd or build output location
+      // Try multiple candidate paths so it works regardless of cwd / build output
       const candidates = [
-        path.join(__dirname, "..", "..", "data", "words.json"), // dist/services/ → root
-        path.join(__dirname, "..", "data", "words.json"), // dist/ → root
-        path.join(__dirname, "data", "words.json"), // same dir
-        path.join(process.cwd(), "data", "words.json"), // cwd fallback
+        path.join(__dirname, "..", "..", "data", "words.json"),
+        path.join(__dirname, "..", "data", "words.json"),
+        path.join(__dirname, "data", "words.json"),
+        path.join(process.cwd(), "data", "words.json"),
       ];
 
       let raw: string | null = null;
       for (const candidate of candidates) {
-        if (fs.existsSync(candidate)) {
+        try {
           raw = fs.readFileSync(candidate, "utf-8");
           console.debug(`[WordService] Loaded words.json from: ${candidate}`);
           break;
+        } catch {
+          // try next candidate
         }
       }
 
       if (!raw) throw new Error("words.json not found in any candidate path");
 
       const parsed = JSON.parse(raw);
-
-      // Support two formats:
-      // 1. Flat array:  [{ word, language, category }, ...]
-      // 2. Object:      { de: [{ word, category }, ...], en: [...] }
-      if (Array.isArray(parsed)) {
-        // Format 1: [{ word, language, category }, ...]
-        this.words = parsed as WordEntry[];
-      } else if (typeof parsed === "object" && parsed !== null) {
-        const entries: WordEntry[] = [];
-        for (const [lang, categoryMap] of Object.entries(parsed)) {
-          if (typeof categoryMap !== "object" || categoryMap === null) continue;
-
-          if (Array.isArray(categoryMap)) {
-            // Format 2: { de: [{ word, category }], en: [...] }
-            for (const item of categoryMap as {
-              word: string;
-              category: string;
-            }[]) {
-              entries.push({
-                word: item.word,
-                language: lang as Language,
-                category: item.category,
-              });
-            }
-          } else {
-            // Format 3 (this file): { de: { Tiere: ["Katze", ...] }, en: { Animals: [...] } }
-            for (const [category, wordList] of Object.entries(categoryMap)) {
-              if (!Array.isArray(wordList)) continue;
-              for (const word of wordList as string[]) {
-                entries.push({ word, language: lang as Language, category });
-              }
-            }
-          }
-        }
-        this.words = entries;
-      } else {
-        throw new Error("Unexpected words.json format");
-      }
+      this.words = this.parse(parsed);
     } catch {
       console.warn(
         "[WordService] words.json not found or invalid, using built-in fallback",
       );
       this.words = FALLBACK_WORDS;
     }
+
     this.loaded = true;
   }
 
+  // ── Parse ─────────────────────────────────────────────────────────────────
+
+  private static parse(parsed: unknown): WordEntry[] {
+    if (Array.isArray(parsed)) {
+      // Format 1: [{ word, language, category }, ...]
+      return parsed as WordEntry[];
+    }
+
+    if (typeof parsed !== "object" || parsed === null) {
+      throw new Error("Unexpected words.json format");
+    }
+
+    const entries: WordEntry[] = [];
+
+    for (const [lang, categoryMap] of Object.entries(
+      parsed as Record<string, unknown>,
+    )) {
+      if (typeof categoryMap !== "object" || categoryMap === null) continue;
+
+      if (Array.isArray(categoryMap)) {
+        // Format 2: { de: [{ word, category }], en: [...] }
+        for (const item of categoryMap as {
+          word: string;
+          category: string;
+        }[]) {
+          entries.push({
+            word: item.word,
+            language: lang as Language,
+            category: item.category,
+          });
+        }
+      } else {
+        // Format 3 (this project): { de: { Tiere: ["Katze", ...] }, en: { Animals: [...] } }
+        for (const [category, wordList] of Object.entries(
+          categoryMap as Record<string, unknown>,
+        )) {
+          if (!Array.isArray(wordList)) continue;
+          for (const word of wordList as string[]) {
+            entries.push({ word, language: lang as Language, category });
+          }
+        }
+      }
+    }
+
+    return entries;
+  }
+
+  // ── Public API ────────────────────────────────────────────────────────────
+
+  /**
+   * Returns the categories present in the loaded words.json for a given language.
+   * Derived from actual data — not a hardcoded list — so tests with mock data work correctly.
+   */
   static getCategories(language: Language): string[] {
-    return CATEGORIES[language] ?? CATEGORIES["de"];
+    this.load();
+    const seen = new Set<string>();
+    const order: string[] = [];
+    for (const w of this.words) {
+      if (w.language === language && !seen.has(w.category)) {
+        seen.add(w.category);
+        order.push(w.category);
+      }
+    }
+    return order;
   }
 
   static getRandomWord(
@@ -116,16 +131,23 @@ export class WordService {
   ): string {
     this.load();
 
-    const pool = this.words.filter(
-      (w) =>
-        w.language === language &&
-        (categories.length === 0 || categories.includes(w.category)),
+    const normalizedCats = categories.map((c) => c.toLowerCase().trim());
+
+    const pool = this.words.filter((w) => {
+      if (w.language !== language) return false;
+      if (normalizedCats.length === 0) return true;
+      return normalizedCats.includes(w.category.toLowerCase().trim());
+    });
+
+    console.debug(
+      `[WordService] lang=${language} cats=${JSON.stringify(categories)} ` +
+        `pool=${pool.length}/${this.words.length}`,
     );
 
     if (pool.length === 0) {
-      // Fallback: ignore category filter
+      // Fallback: ignore category filter, use all words for this language
       const langPool = this.words.filter((w) => w.language === language);
-      if (langPool.length === 0) return "Katze";
+      if (langPool.length === 0) return "???";
       return langPool[Math.floor(Math.random() * langPool.length)].word;
     }
 
@@ -133,28 +155,16 @@ export class WordService {
   }
 }
 
-// ─── Built-in fallback words (used if words.json is missing) ─────────────────
+// ─── Built-in fallback (used if words.json is missing) ────────────────────────
 const FALLBACK_WORDS: WordEntry[] = [
-  // DE
-  { word: "Katze", language: "de", category: "Tiere" },
-  { word: "Hund", language: "de", category: "Tiere" },
-  { word: "Elefant", language: "de", category: "Tiere" },
-  { word: "Pizza", language: "de", category: "Essen & Trinken" },
-  { word: "Fahrrad", language: "de", category: "Fahrzeuge" },
-  { word: "Baum", language: "de", category: "Natur" },
-  { word: "Haus", language: "de", category: "Objekte" },
-  { word: "Arzt", language: "de", category: "Berufe" },
-  { word: "Fußball", language: "de", category: "Sport" },
-  { word: "Drache", language: "de", category: "Fantasy & Mythologie" },
-  // EN
-  { word: "Cat", language: "en", category: "Animals" },
-  { word: "Dog", language: "en", category: "Animals" },
-  { word: "Elephant", language: "en", category: "Animals" },
-  { word: "Pizza", language: "en", category: "Food & Drinks" },
-  { word: "Bicycle", language: "en", category: "Vehicles" },
-  { word: "Tree", language: "en", category: "Nature" },
-  { word: "House", language: "en", category: "Objects" },
-  { word: "Doctor", language: "en", category: "Jobs" },
-  { word: "Football", language: "en", category: "Sports" },
-  { word: "Dragon", language: "en", category: "Fantasy & Mythology" },
+  { word: "Katze", language: "de", category: "Allgemein" },
+  { word: "Hund", language: "de", category: "Allgemein" },
+  { word: "Haus", language: "de", category: "Allgemein" },
+  { word: "Auto", language: "de", category: "Allgemein" },
+  { word: "Baum", language: "de", category: "Allgemein" },
+  { word: "Cat", language: "en", category: "General" },
+  { word: "Dog", language: "en", category: "General" },
+  { word: "House", language: "en", category: "General" },
+  { word: "Car", language: "en", category: "General" },
+  { word: "Tree", language: "en", category: "General" },
 ];

@@ -122,10 +122,16 @@ export function updateSettings(
     room.language = patch.language;
     room.categories = WordService.getCategories(patch.language);
   }
-  if (patch.categories !== undefined && patch.categories.length > 0) {
-    room.categories = patch.categories;
+  if (patch.categories !== undefined) {
+    const validCats = WordService.getCategories(room.language);
+    const filtered = patch.categories.filter((c) => validCats.includes(c));
+    if (filtered.length === 0)
+      throw { status: 400, message: "At least one valid category required" };
+    room.categories = filtered;
   }
   if (patch.maxRounds !== undefined) {
+    if (patch.maxRounds < 1 || patch.maxRounds > 10)
+      throw { status: 400, message: "maxRounds must be between 1 and 10" };
     room.maxRounds = patch.maxRounds;
   }
 

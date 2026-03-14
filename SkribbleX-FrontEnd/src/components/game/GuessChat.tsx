@@ -2,7 +2,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { getSocket } from "@/socket";
-import type { Player } from "@/types/game";
 import styles from "@/styles/GuessChat.module.css";
 
 export interface ChatMessage {
@@ -16,20 +15,16 @@ interface GuessChatProps {
   roomID: string;
   phase: string;
   isDrawer: boolean;
-  localPlayer: Player | undefined;
   hasGuessed: boolean;
   messages: ChatMessage[];
-  onMessage: (msg: ChatMessage) => void;
 }
 
 export default function GuessChat({
   roomID,
   phase,
   isDrawer,
-  localPlayer,
   hasGuessed,
   messages,
-  onMessage,
 }: GuessChatProps) {
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -50,13 +45,8 @@ export default function GuessChat({
 
     if (canGuess) {
       socket.emit("game:guess", { roomID, guess: text });
-      // Optimistic local echo (will be replaced by server event if correct)
-      onMessage({
-        id: crypto.randomUUID(),
-        type: "chat",
-        sender: localPlayer?.name ?? "You",
-        text,
-      });
+      // No local echo — backend broadcasts wrong guesses as room:message
+      // and correct guesses trigger game:guess-correct / game:player-guessed
     } else if (canChat) {
       socket.emit("room:message", { roomID, text });
     }

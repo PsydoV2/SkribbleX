@@ -68,11 +68,8 @@ export default function GameView({
 
   // Socket listeners
   useEffect(() => {
-    const onCorrectGuess = (d: { score: number }) =>
-      addMessage({
-        type: "correct",
-        text: `You guessed it! 🎉 (+${d.score - (localPlayer?.score ?? 0)} pts)`,
-      });
+    const onCorrectGuess = () =>
+      addMessage({ type: "correct", text: "You guessed it! 🎉" });
     const onPlayerGuessed = (d: { name: string }) =>
       addMessage({ type: "system", text: `${d.name} got it!` });
     const onRoundEnded = (d: { word: string }) => {
@@ -204,10 +201,8 @@ export default function GameView({
             roomID={room.roomID}
             phase={room.phase}
             isDrawer={isDrawer}
-            localPlayer={localPlayer}
             hasGuessed={localPlayer?.hasGuessed ?? false}
             messages={messages}
-            onMessage={addMessage}
           />
         </div>
       </div>

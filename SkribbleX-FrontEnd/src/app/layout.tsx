@@ -17,10 +17,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {/*
-          ToastProvider is "use client" — wrapping body content here is fine.
-          It must sit inside <body> so it can render the toast portal.
-        */}
         <ToastProvider>{children}</ToastProvider>
       </body>
     </html>

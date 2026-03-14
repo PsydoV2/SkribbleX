@@ -1,0 +1,358 @@
+/* src/app/page.module.css */
+
+/* ── Shell ───────────────────────────────────────────────────────────────── */
+.main {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Hero ────────────────────────────────────────────────────────────────── */
+.hero {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3rem;
+  padding: 6rem 6vw 5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* subtle radial glow behind hero text */
+.hero::before {
+  content: "";
+  position: absolute;
+  top: -10%;
+  left: -5%;
+  width: 50vw;
+  height: 70vh;
+  background: radial-gradient(
+    ellipse,
+    color-mix(in srgb, var(--primary) 6%, transparent),
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.heroInner {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 520px;
+  animation: fadeUp 0.7s ease both;
+}
+
+/* Logo mark */
+.logoMark {
+  display: flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.logoX {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: var(--primary);
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.logoRest {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Headline */
+.headline {
+  font-size: clamp(3rem, 7vw, 5.5rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--text);
+}
+
+.headlineAccent {
+  color: var(--primary);
+  display: block;
+}
+
+.sub {
+  font-size: 1rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+  max-width: 420px;
+}
+
+.sub strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* CTA buttons */
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.ctaPrimary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.75rem 1.75rem;
+  background: var(--primary);
+  color: var(--bg-dark);
+  font-size: 0.95rem;
+  font-weight: 800;
+  border-radius: var(--radius-lg);
+  letter-spacing: 0.02em;
+  transition:
+    opacity var(--t-base),
+    transform var(--t-fast);
+  text-decoration: none;
+}
+
+.ctaPrimary:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.ctaSecondary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-muted);
+  transition:
+    color var(--t-base),
+    border-color var(--t-base);
+  text-decoration: none;
+}
+
+.ctaSecondary:hover {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* ── Canvas Mockup ───────────────────────────────────────────────────────── */
+.canvasMockup {
+  flex-shrink: 0;
+  animation: fadeUp 0.7s 0.15s ease both;
+}
+
+.mockupFrame {
+  width: 320px;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  border: 1px solid var(--border-muted);
+  box-shadow:
+    0 0 0 1px var(--border-muted),
+    0 24px 64px rgba(0, 0, 0, 0.5);
+}
+
+.mockupTopbar {
+  height: 36px;
+  background: var(--bg-light);
+  border-bottom: 1px solid var(--border-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+}
+
+.mockupDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.mockupBody {
+  background: var(--bg);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.mockupSvg {
+  width: 100%;
+  height: 160px;
+  background: hsl(0 0% 100% / 0.03);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-muted);
+}
+
+.mockupGuess {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--success-border);
+  background: var(--success);
+  border: 1px solid var(--success-border);
+  padding: 0.4rem 0.9rem;
+  border-radius: 2rem;
+  width: 100%;
+  text-align: center;
+}
+
+/* ── Features ────────────────────────────────────────────────────────────── */
+.features {
+  padding: 5rem 6vw;
+  border-top: 1px solid var(--border-muted);
+}
+
+.featuresTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 2.5rem;
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.featureCard {
+  padding: 1.75rem;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: background var(--t-base);
+}
+
+.featureCard:hover {
+  background: var(--bg-light);
+}
+
+.featureIcon {
+  font-size: 1.5rem;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.featureCardTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.featureCardDesc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+/* ── CTA Banner ──────────────────────────────────────────────────────────── */
+.banner {
+  margin: 0 6vw 5rem;
+  padding: 3rem;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--primary) 4%, var(--bg));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.bannerText {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 900;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+/* ── Footer ──────────────────────────────────────────────────────────────── */
+.footer {
+  padding: 1.5rem 6vw;
+  border-top: 1px solid var(--border-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.footerLinks {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.footerLinks a {
+  color: var(--text-dim);
+  transition: color var(--t-fast);
+  text-decoration: none;
+}
+
+.footerLinks a:hover {
+  color: var(--text);
+}
+
+/* ── Animation ───────────────────────────────────────────────────────────── */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .hero {
+    flex-direction: column;
+    padding: 4rem 5vw 3rem;
+    text-align: center;
+    align-items: center;
+  }
+
+  .actions {
+    justify-content: center;
+  }
+
+  .canvasMockup {
+    width: 100%;
+  }
+
+  .mockupFrame {
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+
+  .banner {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+  }
+
+  .footer {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+}

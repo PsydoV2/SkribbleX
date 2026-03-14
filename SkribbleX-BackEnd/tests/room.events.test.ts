@@ -95,6 +95,7 @@ function fakePublicRoom() {
     maxRounds: 3,
     phase: "playing" as const,
     wordLength: 5,
+    currentHint: "_____",
     timeLeftMs: 70_000,
     language: "de" as const,
     categories: ["Tiere"],
@@ -244,11 +245,9 @@ describe("lobby:settings", () => {
     const cb = jest.fn();
     socket.fire("lobby:settings", { roomID: "ROOM1", language: "en" }, cb);
     expect(mockedService.updateSettings).toHaveBeenCalledWith(
-      expect.objectContaining({
-        roomID: "ROOM1",
-        socketId: "socket-1",
-        language: "en",
-      }),
+      "ROOM1",
+      "socket-1",
+      expect.objectContaining({ language: "en" }),
     );
   });
 
@@ -299,25 +298,29 @@ describe("game:start", () => {
       "ROOM1",
       "socket-1",
       expect.any(Function),
+      expect.any(Function),
     );
   });
 
-  it("emittet game:round-started an alle", () => {
+  it("emittet game:selecting-word an alle", () => {
     mockedService.startGame.mockReturnValue(fakeRoom() as any);
     const { socket, io } = setup();
     socket.fire("game:start", { roomID: "ROOM1" }, jest.fn());
     expect(io.emit).toHaveBeenCalledWith(
-      "game:round-started",
+      "game:selecting-word",
       expect.any(Object),
     );
   });
 
-  it("emittet game:word-reveal nur an den Drawer", () => {
+  it("emittet game:word-choices nur an den Drawer", () => {
     mockedService.startGame.mockReturnValue(fakeRoom() as any);
     const { socket, io } = setup();
     socket.fire("game:start", { roomID: "ROOM1" }, jest.fn());
     expect(io.to).toHaveBeenCalledWith("socket-1"); // drawerId
-    expect(io.emit).toHaveBeenCalledWith("game:word-reveal", { word: "Katze" });
+    expect(io.emit).toHaveBeenCalledWith(
+      "game:word-choices",
+      expect.any(Object),
+    );
   });
 
   it("gibt ok:true zurück", () => {
@@ -404,10 +407,14 @@ describe("game:guess", () => {
     });
     const { socket, io } = setup();
     socket.fire("game:guess", { roomID: "ROOM1", guess: "Katze" }, jest.fn());
-    expect(io.emit).toHaveBeenCalledWith("game:round-ended", { word: "Katze" });
+    expect(io.emit).toHaveBeenCalledWith(
+      "game:round-ended",
+      expect.objectContaining({ word: "Katze" }),
+    );
   });
 
-  it("emittet game:ended wenn roundOver true und gameEnd", () => {
+  it("emittet game:ended nach Verzögerung wenn roundOver true und gameEnd", () => {
+    jest.useFakeTimers();
     mockedService.getRoom.mockReturnValue(
       fakeRoom({ phase: "gameEnd" }) as any,
     );
@@ -418,7 +425,14 @@ describe("game:guess", () => {
     });
     const { socket, io } = setup();
     socket.fire("game:guess", { roomID: "ROOM1", guess: "Katze" }, jest.fn());
+    // game:round-ended wird sofort gesendet, game:ended nach ROUND_END_DELAY_MS
+    expect(io.emit).toHaveBeenCalledWith(
+      "game:round-ended",
+      expect.objectContaining({ word: "Katze" }),
+    );
+    jest.advanceTimersByTime(5_000);
     expect(io.emit).toHaveBeenCalledWith("game:ended", expect.any(Object));
+    jest.useRealTimers();
   });
 
   it("gibt ok:false bei Fehler zurück", () => {

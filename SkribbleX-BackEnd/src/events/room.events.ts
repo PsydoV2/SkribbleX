@@ -61,6 +61,39 @@ export function registerRoomEvents(io: Server, socket: Socket) {
     if (roomID) handleLeave(io, socket, roomID);
   });
 
+  // ─── lobby:settings ─────────────────────────────────────────────────────────
+  socket.on(
+    "lobby:settings",
+    ({ roomID, language, categories, maxRounds }, callback) => {
+      try {
+        const room = roomService.updateSettings(roomID, socket.id, {
+          language,
+          categories,
+          maxRounds,
+        });
+        io.to(roomID).emit("lobby:settings-updated", {
+          room: roomService.getRoomPublic(room),
+        });
+        callback?.({ ok: true });
+      } catch (err: any) {
+        callback?.({ ok: false, error: err?.message ?? "Unknown error" });
+      }
+    },
+  );
+
+  // ─── game:reset-to-lobby ────────────────────────────────────────────────────
+  socket.on("game:reset-to-lobby", ({ roomID }, callback) => {
+    try {
+      const room = roomService.resetToLobby(roomID, socket.id);
+      io.to(roomID).emit("game:lobby-reset", {
+        room: roomService.getRoomPublic(room),
+      });
+      callback?.({ ok: true });
+    } catch (err: any) {
+      callback?.({ ok: false, error: err?.message ?? "Unknown error" });
+    }
+  });
+
   // ─── game:start ─────────────────────────────────────────────────────────────
   socket.on("game:start", ({ roomID }, callback) => {
     try {
@@ -195,10 +228,12 @@ function handleRoundEnd(
   });
 
   if (isGameEnd) {
-    const room = roomService.getRoom(roomID);
-    io.to(roomID).emit("game:ended", {
-      players: room ? Object.values(room.players) : [],
-    });
+    setTimeout(() => {
+      const room = roomService.getRoom(roomID);
+      io.to(roomID).emit("game:ended", {
+        players: room ? Object.values(room.players) : [],
+      });
+    }, ROUND_END_DELAY_MS);
     return;
   }
 

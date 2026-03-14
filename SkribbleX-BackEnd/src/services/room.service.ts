@@ -1,8 +1,8 @@
 // src/services/room.service.ts
 import { customAlphabet } from "nanoid";
-import type { RoomState } from "../types/RoomState";
+import type { RoomState, Language } from "../types/RoomState";
 import type { Player } from "../types/Player";
-import { WordService, type Language } from "./word.service";
+import { WordService } from "./word.service";
 
 const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const nano = customAlphabet(alphabet, 6);
@@ -30,7 +30,7 @@ export function createRoom(): string {
     roundStartedAt: null,
     roundTimerHandle: null,
     language: "de",
-    categories: WordService.getCategories("de"), // alle Kategorien als Default
+    categories: WordService.getCategories("de"),
   });
 
   console.debug(`[room] Created: ${roomID}`);
@@ -41,47 +41,6 @@ export function createRoom(): string {
 
 export function getRoom(roomID: string): RoomState | undefined {
   return rooms.get(roomID);
-}
-
-// ─── Lobby-Einstellungen ändern (nur Host) ────────────────────────────────────
-
-export function updateSettings(payload: {
-  roomID: string;
-  socketId: string;
-  language?: Language;
-  categories?: string[];
-  maxRounds?: number;
-}): RoomState {
-  const room = rooms.get(payload.roomID);
-  if (!room) throw { status: 404, message: "Room not found" };
-  if (room.hostId !== payload.socketId)
-    throw { status: 403, message: "Only the host can change settings" };
-  if (room.phase !== "lobby")
-    throw { status: 400, message: "Settings can only be changed in lobby" };
-
-  if (payload.language) {
-    room.language = payload.language;
-    // Kategorien auf neue Sprache zurücksetzen wenn keine explizit angegeben
-    if (!payload.categories) {
-      room.categories = WordService.getCategories(payload.language);
-    }
-  }
-
-  if (payload.categories) {
-    const available = WordService.getCategories(room.language);
-    const valid = payload.categories.filter((c) => available.includes(c));
-    if (valid.length === 0)
-      throw { status: 400, message: "No valid categories selected" };
-    room.categories = valid;
-  }
-
-  if (payload.maxRounds !== undefined) {
-    if (payload.maxRounds < 1 || payload.maxRounds > 10)
-      throw { status: 400, message: "maxRounds must be between 1 and 10" };
-    room.maxRounds = payload.maxRounds;
-  }
-
-  return room;
 }
 
 // ─── Spieler beitreten ────────────────────────────────────────────────────────
@@ -141,6 +100,38 @@ export function leaveRoom(roomID: string, socketId: string): RoomState | null {
   return room;
 }
 
+// ─── Lobby-Settings ändern ────────────────────────────────────────────────────
+
+export function updateSettings(
+  roomID: string,
+  socketId: string,
+  patch: {
+    language?: Language;
+    categories?: string[];
+    maxRounds?: number;
+  },
+): RoomState {
+  const room = rooms.get(roomID);
+  if (!room) throw { status: 404, message: "Room not found" };
+  if (room.hostId !== socketId)
+    throw { status: 403, message: "Only the host can change settings" };
+  if (room.phase !== "lobby")
+    throw { status: 400, message: "Game already started" };
+
+  if (patch.language !== undefined) {
+    room.language = patch.language;
+    room.categories = WordService.getCategories(patch.language);
+  }
+  if (patch.categories !== undefined && patch.categories.length > 0) {
+    room.categories = patch.categories;
+  }
+  if (patch.maxRounds !== undefined) {
+    room.maxRounds = patch.maxRounds;
+  }
+
+  return room;
+}
+
 // ─── Spiel starten ────────────────────────────────────────────────────────────
 
 export type RoundEndCallback = (
@@ -173,12 +164,11 @@ function startNextRound(
   onRoundEnd: RoundEndCallback,
 ): RoomState {
   const playerIds = Object.keys(room.players);
-
   clearRoundTimer(room);
 
   room.round += 1;
   room.phase = "playing";
-  room.word = WordService.getRandomWord(room.language, room.categories); // ← Sprache + Kategorien
+  room.word = WordService.getRandomWord(room.language, room.categories);
   room.guessedPlayerIds = new Set();
   room.roundStartedAt = Date.now();
 
@@ -218,7 +208,6 @@ export function processGuess(payload: {
 
   if (room.drawerId === payload.socketId)
     return { result: "drawer", room, roundOver: false };
-
   if (room.guessedPlayerIds.has(payload.socketId))
     return { result: "already_guessed", room, roundOver: false };
 
@@ -237,7 +226,7 @@ export function processGuess(payload: {
 
     if (allGuessed) {
       awardDrawerPoints(room);
-      endRound(room);
+      const isGameEnd = endRound(room);
       return { result: "correct", room, roundOver: true };
     }
 
@@ -263,6 +252,31 @@ export function nextRound(
   const room = rooms.get(roomID);
   if (!room) throw { status: 404, message: "Room not found" };
   return startNextRound(room, onRoundEnd);
+}
+
+// ─── Lobby zurücksetzen ───────────────────────────────────────────────────────
+
+export function resetToLobby(roomID: string, requesterId: string): RoomState {
+  const room = rooms.get(roomID);
+  if (!room) throw { status: 404, message: "Room not found" };
+  if (room.hostId !== requesterId)
+    throw { status: 403, message: "Only the host can reset" };
+
+  clearRoundTimer(room);
+
+  for (const player of Object.values(room.players)) {
+    player.score = 0;
+    player.hasGuessed = false;
+  }
+
+  room.phase = "lobby";
+  room.round = 0;
+  room.drawerId = null;
+  room.word = null;
+  room.guessedPlayerIds = new Set();
+  room.roundStartedAt = null;
+
+  return room;
 }
 
 // ─── Score berechnen ─────────────────────────────────────────────────────────
@@ -312,6 +326,6 @@ export function getRoomPublic(room: RoomState) {
     timeLeftMs,
     language: room.language,
     categories: room.categories,
-    availableCategories: WordService.getCategories(room.language), // für die Lobby-UI
+    availableCategories: WordService.getCategories(room.language),
   };
 }

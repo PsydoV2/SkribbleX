@@ -14,6 +14,7 @@ interface UseGameSocketOptions {
   onWordReveal: (data: { word: string }) => void;
   onRoundEnded: (data: { word: string; room: PublicRoom | null }) => void;
   onGameEnded: (data: { players: unknown[] }) => void;
+  onLobbyReset: (data: { room: PublicRoom }) => void;
   onError: (msg: string) => void;
 }
 
@@ -58,6 +59,7 @@ export function useGameSocket(opts: UseGameSocketOptions) {
       ["game:word-reveal", (d) => optsRef.current.onWordReveal(d as never)],
       ["game:round-ended", (d) => optsRef.current.onRoundEnded(d as never)],
       ["game:ended", (d) => optsRef.current.onGameEnded(d as never)],
+      ["game:lobby-reset", (d) => optsRef.current.onLobbyReset(d as never)],
     ];
 
     for (const [event, handler] of handlers) {
@@ -107,5 +109,17 @@ export function useGameSocket(opts: UseGameSocketOptions) {
     socket.emit("room:leave", { roomID });
   }, []);
 
-  return { updateSettings, startGame, leaveRoom };
+  const resetToLobby = useCallback((roomID: string) => {
+    const socket = getSocket();
+    socket.emit(
+      "game:reset-to-lobby",
+      { roomID },
+      (res: { ok: boolean; error?: string }) => {
+        if (!res.ok)
+          optsRef.current.onError(res.error ?? "Could not reset to lobby");
+      },
+    );
+  }, []);
+
+  return { updateSettings, startGame, leaveRoom, resetToLobby };
 }

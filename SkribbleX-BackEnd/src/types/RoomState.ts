@@ -1,8 +1,8 @@
 // src/types/RoomState.ts
 import type { Player } from "./Player";
-import type { Language } from "../services/word.service";
 
 export type GamePhase = "lobby" | "playing" | "roundEnd" | "gameEnd";
+export type Language = "de" | "en";
 
 export interface RoomState {
   roomID: string;
@@ -17,7 +17,6 @@ export interface RoomState {
   guessedPlayerIds: Set<string>;
   roundStartedAt: number | null;
   roundTimerHandle: ReturnType<typeof setTimeout> | null;
-  // Lobby-Einstellungen (Host wählt)
   language: Language;
   categories: string[];
 }

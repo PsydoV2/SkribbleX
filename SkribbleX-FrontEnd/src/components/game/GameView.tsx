@@ -18,8 +18,9 @@ interface GameViewProps {
   room: PublicRoom;
   localUser: DiscordUser;
   socketId: string;
-  drawerWord: string | null; // set by page.tsx from word-reveal event
-  onGameEnd: () => void;
+  drawerWord: string | null;
+  onBackLobby: () => void;
+  onLeave: () => void;
 }
 
 export default function GameView({
@@ -27,7 +28,8 @@ export default function GameView({
   localUser,
   socketId,
   drawerWord,
-  onGameEnd,
+  onBackLobby,
+  onLeave,
 }: GameViewProps) {
   const canvasRef = useRef<CanvasBoardHandle>(null);
   const socket = getSocket();
@@ -119,7 +121,13 @@ export default function GameView({
   const sorted = [...room.players].sort((a, b) => b.score - a.score);
 
   if (gameEnded) {
-    return <GameEndScreen players={endPlayers} onPlayAgain={onGameEnd} />;
+    return (
+      <GameEndScreen
+        players={endPlayers}
+        onBackLobby={onBackLobby}
+        onLeave={onLeave}
+      />
+    );
   }
 
   return (

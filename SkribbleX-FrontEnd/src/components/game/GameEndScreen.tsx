@@ -6,14 +6,16 @@ import styles from "@/styles/GameEndScreen.module.css";
 
 interface GameEndScreenProps {
   players: Player[];
-  onPlayAgain: () => void;
+  onBackLobby: () => void;
+  onLeave: () => void;
 }
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
 export default function GameEndScreen({
   players,
-  onPlayAgain,
+  onBackLobby,
+  onLeave,
 }: GameEndScreenProps) {
   const sorted = [...players].sort((a, b) => b.score - a.score);
 
@@ -47,9 +49,14 @@ export default function GameEndScreen({
           ))}
         </div>
 
-        <button className={styles.playAgainBtn} onClick={onPlayAgain}>
-          Play Again 🎮
-        </button>
+        <div className={styles.actions}>
+          <button className={styles.lobbyBtn} onClick={onBackLobby}>
+            🏠 Back to Lobby
+          </button>
+          <button className={styles.leaveBtn} onClick={onLeave}>
+            ✕ Leave
+          </button>
+        </div>
       </motion.div>
     </motion.div>
   );

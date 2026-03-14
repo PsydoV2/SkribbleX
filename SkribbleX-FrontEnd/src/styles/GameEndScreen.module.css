@@ -70,18 +70,45 @@
   color: var(--primary);
 }
 
-.playAgainBtn {
+.actions {
+  display: flex;
+  gap: 0.75rem;
   margin-top: 0.5rem;
-  padding: 0.7rem 2rem;
+  width: 100%;
+}
+
+.lobbyBtn {
+  flex: 1;
+  padding: 0.7rem 1rem;
   border-radius: var(--radius-lg);
   background: var(--primary);
   color: var(--bg-dark);
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 800;
   cursor: pointer;
   transition: opacity var(--t-base);
 }
 
-.playAgainBtn:hover {
+.lobbyBtn:hover {
   opacity: 0.85;
+}
+
+.leaveBtn {
+  padding: 0.7rem 1.25rem;
+  border-radius: var(--radius-lg);
+  background: var(--bg-light);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-muted);
+  transition:
+    background var(--t-base),
+    color var(--t-base);
+}
+
+.leaveBtn:hover {
+  background: color-mix(in srgb, var(--danger) 15%, var(--bg-light));
+  color: var(--danger);
+  border-color: var(--danger);
 }

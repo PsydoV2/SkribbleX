@@ -26,11 +26,8 @@ export default function GamePage() {
   const [user, setUser] = useState<DiscordUser | null>(null);
   const [room, setRoom] = useState<PublicRoom | null>(null);
   const [socketId, setSocketId] = useState<string>(socket.id ?? "");
-  // word-reveal kommt direkt nach round-started — vor GameView mount
-  // → hier fangen und als Prop weitergeben
   const [drawerWord, setDrawerWord] = useState<string | null>(null);
 
-  // ── Discord identity ────────────────────────────────────────────────────
   useEffect(() => {
     getDiscordUser()
       .then((u) => {
@@ -43,7 +40,6 @@ export default function GamePage() {
       });
   }, []);
 
-  // ── Socket connection state ─────────────────────────────────────────────
   useEffect(() => {
     const onConnect = () => {
       setIsConnected(true);
@@ -60,31 +56,33 @@ export default function GamePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Game socket ─────────────────────────────────────────────────────────
   const inRoom = screen === "lobby" || screen === "game";
 
-  const { updateSettings, startGame, leaveRoom } = useGameSocket({
+  const { updateSettings, startGame, leaveRoom, resetToLobby } = useGameSocket({
     user: inRoom ? user : null,
     roomID: inRoom ? (room?.roomID ?? null) : null,
     onRoomUpdate: (r) => setRoom(r),
     onPlayerJoined: ({ room: r }) => setRoom(r),
     onPlayerLeft: ({ room: r }) => setRoom(r),
     onRoundStarted: ({ room: r }) => {
-      setDrawerWord(null); // reset for new round
+      setDrawerWord(null);
       setRoom(r);
       setScreen("game");
     },
-    // Catch word-reveal HERE — GameView may not be mounted yet
     onWordReveal: ({ word }) => setDrawerWord(word),
     onRoundEnded: (d) => {
-      if (d.room) setRoom(d.room); // updated scores from backend
+      if (d.room) setRoom(d.room);
       setDrawerWord(null);
     },
-    onGameEnded: () => {},
+    onGameEnded: () => {}, // GameView handles end screen
+    onLobbyReset: ({ room: r }) => {
+      setRoom(r);
+      setDrawerWord(null);
+      setScreen("lobby");
+    },
     onError: (msg) => showToastRef.current("error", msg),
   });
 
-  // ── Actions ─────────────────────────────────────────────────────────────
   const emptyRoom = (roomID: string, hostId: string | null): PublicRoom => ({
     roomID,
     players: [],
@@ -125,6 +123,21 @@ export default function GamePage() {
     setRoom(null);
     setDrawerWord(null);
     setScreen("select");
+  };
+
+  const handleBackLobby = () => {
+    if (!room) return;
+    // Host triggers reset → backend emits game:lobby-reset to all → onLobbyReset fires
+    // Non-host: wait for the event (host will trigger it)
+    const isHost = room.hostId === socketId;
+    if (isHost) {
+      resetToLobby(room.roomID);
+    }
+    // Non-hosts: the onLobbyReset handler above transitions them automatically
+    // when the host clicks Back to Lobby. If they're not host, show a hint.
+    else {
+      showToastRef.current("info", "Waiting for host to return to lobby…");
+    }
   };
 
   return (
@@ -168,7 +181,8 @@ export default function GamePage() {
           localUser={user}
           socketId={socketId}
           drawerWord={drawerWord}
-          onGameEnd={handleLeave}
+          onBackLobby={handleBackLobby}
+          onLeave={handleLeave}
         />
       )}
     </div>

@@ -120,7 +120,7 @@ button {
 /* Pill toggle button — used in Lobby settings and toolbars */
 .pill {
   padding: 0.3rem 0.75rem;
-  border-radius: 2rem;
+  border-radius: var(--radius-sm);
   font-size: 0.78rem;
   font-weight: 500;
   background: var(--bg-light);

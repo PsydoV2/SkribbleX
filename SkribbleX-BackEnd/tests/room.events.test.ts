@@ -79,6 +79,7 @@ function fakeRoom(
     guessedPlayerIds: new Set<string>(),
     roundStartedAt: Date.now(),
     roundTimerHandle: null,
+    strokeHistory: [],
     language: "de" as const,
     categories: ["Tiere"],
     ...overrides,
@@ -141,7 +142,7 @@ describe("room:create", () => {
 
 describe("room:join", () => {
   it("joined Socket dem Room und ruft callback mit Raum auf", () => {
-    mockedService.joinRoom.mockReturnValue(fakeRoom() as any);
+    mockedService.joinRoom.mockReturnValue({ room: fakeRoom(), reconnected: false } as any);
     const { socket } = setup();
     const cb = jest.fn();
     socket.fire(
@@ -154,7 +155,7 @@ describe("room:join", () => {
   });
 
   it("emittet room:player-joined an andere Spieler", () => {
-    mockedService.joinRoom.mockReturnValue(fakeRoom() as any);
+    mockedService.joinRoom.mockReturnValue({ room: fakeRoom(), reconnected: false } as any);
     const { socket } = setup();
     socket.fire(
       "room:join",
@@ -216,7 +217,7 @@ describe("room:leave", () => {
 
 describe("disconnect", () => {
   it("ruft leaveRoom auf wenn Socket in einem Raum war", () => {
-    mockedService.joinRoom.mockReturnValue(fakeRoom() as any);
+    mockedService.joinRoom.mockReturnValue({ room: fakeRoom(), reconnected: false } as any);
     mockedService.leaveRoom.mockReturnValue(null);
     const { socket } = setup();
     // Erst joinen damit Mapping existiert

@@ -196,12 +196,13 @@ describe("joinRoom", () => {
     ).toThrow(expect.objectContaining({ status: 404 }));
   });
 
-  it("wirft 409 wenn dieselbe playerID zweimal joined", () => {
+  it("reconnectet Spieler mit gleicher playerID (aktualisiert socketId)", () => {
     const roomID = setupRoom();
     joinRoom({ roomID, socketId: "s1", playerID: "p1", name: "Alice" });
-    expect(() =>
-      joinRoom({ roomID, socketId: "s2", playerID: "p1", name: "Alice2" }),
-    ).toThrow(expect.objectContaining({ status: 409 }));
+    const { room, reconnected } = joinRoom({ roomID, socketId: "s2", playerID: "p1", name: "Alice" });
+    expect(reconnected).toBe(true);
+    expect(room.players["s2"]).toBeDefined();
+    expect(room.players["s1"]).toBeUndefined();
   });
 
   it("wirft 400 wenn Spiel bereits läuft", () => {

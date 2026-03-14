@@ -105,6 +105,9 @@ export default function GameView({
       playOwnCorrectGuess();
       addMessage({ type: "correct", text: "You guessed it! 🎉" });
     };
+    const onGuessWarm = () => {
+      addMessage({ type: "system", text: "🔥 So close! Try again…" });
+    };
     const onPlayerGuessed = (d: { name: string }) => {
       playCorrectGuess();
       addMessage({ type: "system", text: `${d.name} got it!` });
@@ -128,12 +131,14 @@ export default function GameView({
 
     socket.on("game:guess-correct", onCorrectGuess);
     socket.on("game:player-guessed", onPlayerGuessed);
+    socket.on("game:guess-warm", onGuessWarm);
     socket.on("game:round-ended", onRoundEnded);
     socket.on("game:ended", onGameEnded);
     socket.on("room:message", onChatMsg);
     return () => {
       socket.off("game:guess-correct", onCorrectGuess);
       socket.off("game:player-guessed", onPlayerGuessed);
+      socket.off("game:guess-warm", onGuessWarm);
       socket.off("game:round-ended", onRoundEnded);
       socket.off("game:ended", onGameEnded);
       socket.off("room:message", onChatMsg);

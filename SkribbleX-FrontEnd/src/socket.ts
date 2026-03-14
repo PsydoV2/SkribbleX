@@ -6,6 +6,11 @@ let socket: Socket | null = null;
 export function getSocket(): Socket {
   if (socket) return socket;
 
+  // Guard against SSR — this function must only run in the browser
+  if (typeof window === "undefined") {
+    throw new Error("getSocket() called during SSR");
+  }
+
   const params = new URLSearchParams(window.location.search);
   const isDiscordActivity = params.has("instance_id") || params.has("frame_id");
 
@@ -14,7 +19,7 @@ export function getSocket(): Socket {
   // In browser: connect directly to the backend URL.
   const url = isDiscordActivity
     ? `${window.location.origin}/backend`
-    : (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080");
+    : (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000");
 
   socket = io(url, {
     reconnection: true,

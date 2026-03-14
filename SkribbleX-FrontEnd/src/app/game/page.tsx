@@ -16,16 +16,18 @@ import styles from "./game.module.css";
 type Screen = "loading" | "select" | "lobby" | "game";
 
 export default function GamePage() {
-  const socket = getSocket();
+  const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
+  const getSocketSafe = () => {
+    if (!socketRef.current) socketRef.current = getSocket();
+    return socketRef.current;
+  };
   const { showToast } = useToast();
-  const showToastRef = useRef(showToast);
-  showToastRef.current = showToast;
 
   const [screen, setScreen] = useState<Screen>("loading");
   const [isConnected, setIsConnected] = useState(false);
   const [user, setUser] = useState<DiscordUser | null>(null);
   const [room, setRoom] = useState<PublicRoom | null>(null);
-  const [socketId, setSocketId] = useState<string>(socket.id ?? "");
+  const [socketId, setSocketId] = useState<string>("");
   const [drawerWord, setDrawerWord] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,25 +37,26 @@ export default function GamePage() {
         setScreen("select");
       })
       .catch(() => {
-        showToastRef.current("error", "Could not load Discord identity");
+        showToast("error", "Could not load Discord identity");
         setScreen("select");
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     const onConnect = () => {
       setIsConnected(true);
-      setSocketId(socket.id ?? "");
+      setSocketId(getSocketSafe().id ?? "");
     };
     const onDisconnect = () => setIsConnected(false);
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    if (socket.connected) onConnect();
+    const s = getSocketSafe();
+    s.on("connect", onConnect);
+    s.on("disconnect", onDisconnect);
+    if (s.connected) onConnect();
     return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
+      s.off("connect", onConnect);
+      s.off("disconnect", onDisconnect);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const inRoom = screen === "lobby" || screen === "game";
@@ -80,7 +83,7 @@ export default function GamePage() {
       setDrawerWord(null);
       setScreen("lobby");
     },
-    onError: (msg) => showToastRef.current("error", msg),
+    onError: (msg) => showToast("error", msg),
   });
 
   const emptyRoom = (roomID: string, hostId: string | null): PublicRoom => ({
@@ -105,10 +108,7 @@ export default function GamePage() {
       setRoom(emptyRoom(roomID, socketId));
       setScreen("lobby");
     } catch (err) {
-      showToastRef.current(
-        "error",
-        err instanceof Error ? err.message : String(err),
-      );
+      showToast("error", err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -136,7 +136,7 @@ export default function GamePage() {
     // Non-hosts: the onLobbyReset handler above transitions them automatically
     // when the host clicks Back to Lobby. If they're not host, show a hint.
     else {
-      showToastRef.current("info", "Waiting for host to return to lobby…");
+      showToast("info", "Waiting for host to return to lobby…");
     }
   };
 

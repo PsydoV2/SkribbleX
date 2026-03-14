@@ -1,4 +1,4 @@
-# 📌 **README.md – SkribbleX**
+# **SkribbleX**
 
 <p align="center">
   <img src="./SkribbleX-FrontEnd/public/SkribbleX.png" width="120" alt="SkribbleX Logo"/>
@@ -20,39 +20,47 @@
 
 ---
 
-## 🚀 About SkribbleX
+## About SkribbleX
 
-**SkribbleX** is a realtime multiplayer drawing & guessing game built as a modern **Discord Activity**.  
-Players can draw on a shared canvas while others try to guess the secret word.  
+**SkribbleX** is a realtime multiplayer drawing & guessing game built as a modern **Discord Activity**.
+Players can draw on a shared canvas while others try to guess the secret word.
 The project is completely free, open-source and requires only a lightweight backend.
 
 This is **not** skribbl.io — it's a **clean-room reimplementation** with unique UI, features, and code.
 
 ---
 
-## ✨ Features
+## Features
 
-- 🎨 **Realtime drawing** via WebSockets
-- 🔤 **Guess-the-word gameplay**
-- 👥 **Automatic lobby per Discord Activity instance**
-- 🖥️ **Canvas-based multiplayer drawing board**
-- 🔄 **Rounds with rotating drawer**
-- 🏆 **Scoreboard & live updates**
-- 🌙 **Ultra low-latency sync**
-- 🔒 **Secure Discord identity via Embedded App SDK**
-- 💻 **Runs on your own server (zero cost)**
+- **Realtime drawing** via WebSockets with stroke batching
+- **Fill tool** (flood fill) + **Brush** + **Eraser**
+- **Undo** (Ctrl+Z) — synced across all clients
+- **Guess-the-word gameplay** with word selection phase
+- **Progressive letter hints** — revealed at 30%, 55%, 75% of round time
+- **"Close guess" feedback** — notifies player when within 2 letters of the answer
+- **Live scoreboard** — updates in real-time as players guess correctly
+- **Round-end canvas snapshot** — shows the drawing when the word is revealed
+- **Automatic lobby per Discord Activity instance**
+- **Reconnect support** — rejoin the same game if you lose connection
+- **Host controls** — kick players, change settings, start game
+- **Discord Voice Sync** — shows who is in voice chat (🎤 badge)
+- **Sound effects** — programmatic Web Audio API sounds (no external files)
+- **Word categories** — DE + EN, 8 categories, 50-70 words each
+- **No repeated words** — already-used words are excluded per game
+- **Runs on your own server (zero cost)**
 
 ---
 
-## 🧩 Tech Stack
+## Tech Stack
 
 ### **Frontend**
 
-- React + TypeScript
-- Vite
-- HTML Canvas API
+- Next.js 14 (App Router) + TypeScript
+- HTML Canvas API (custom drawing engine)
+- Framer Motion (overlays & animations)
 - `@discord/embedded-app-sdk`
 - `socket.io-client`
+- CSS Modules
 
 ### **Backend**
 
@@ -60,6 +68,7 @@ This is **not** skribbl.io — it's a **clean-room reimplementation** with uniqu
 - Express
 - Socket.io
 - In-memory game state (no DB needed)
+- Jest (156 tests)
 
 ### **Infrastructure**
 
@@ -68,43 +77,42 @@ This is **not** skribbl.io — it's a **clean-room reimplementation** with uniqu
 
 ---
 
-## 📸 Screenshots (Demo)
+## Repository Structure
 
-> 🚧 _Coming soon – add your screenshots here:_
-
-- `assets/screenshot_lobby.png`
-- `assets/screenshot_canvas.png`
-- `assets/screenshot_guess.png`
-
----
-
-## 📦 Repository Structure
-
-```txt
-scribblex/
-├─ backend/
-│  ├─ src/
-│  │  ├─ index.ts
-│  │  └─ gameState.ts
-│  ├─ package.json
-│  └─ tsconfig.json
-└─ frontend/
-   ├─ src/
-   │  ├─ App.tsx
-   │  ├─ discord.ts
-   │  ├─ components/
-   │  │  ├─ CanvasBoard.tsx
-   │  │  ├─ GuessInput.tsx
-   │  │  └─ PlayerList.tsx
-   ├─ package.json
-   └─ tsconfig.json
+```
+SkribbleX/
+├── SkribbleX-BackEnd/
+│   ├── data/
+│   │   └── words.json              # DE + EN, 8 categories, 50-70 words each
+│   ├── src/
+│   │   ├── index.ts
+│   │   ├── events/
+│   │   │   └── room.events.ts      # All Socket.io event handlers
+│   │   ├── services/
+│   │   │   ├── room.service.ts     # In-memory game logic
+│   │   │   └── word.service.ts
+│   │   └── types/
+│   │       ├── RoomState.ts
+│   │       └── Player.ts
+│   └── tests/                      # 156 Jest tests
+└── SkribbleX-FrontEnd/
+    └── src/
+        ├── app/
+        │   └── game/page.tsx       # Main game page
+        ├── components/
+        │   ├── game/               # GameView, CanvasBoard, Toolbar, GuessChat, …
+        │   └── lobby/              # LobbyView, PlayerCard
+        ├── hooks/
+        │   ├── useGameSocket.ts
+        │   └── useDrawSocket.ts
+        └── lib/
+            ├── sounds.ts           # Web Audio API sound effects
+            └── discord.ts          # Discord SDK + voice sync
 ```
 
 ---
 
-## 🔧 Installation
-
-### **Clone the repo**
+## Installation
 
 ```sh
 git clone https://github.com/DEINUSERNAME/SkribbleX.git
@@ -113,71 +121,69 @@ cd SkribbleX
 
 ---
 
-## 🖥️ Backend Setup
+## Backend Setup
 
 ```sh
-cd backend
+cd SkribbleX-BackEnd
 npm install
 npm run build
 npm start
 ```
 
-The backend defaults to:
+Create a `.env` in `SkribbleX-BackEnd/`:
 
+```env
+NODE_ENV=localhost
+HTTPPORT=4000
+HTTPSPORT=9444
 ```
-http://localhost:4000
-```
+
+The backend defaults to `http://localhost:4000`.
 
 ---
 
-## 🎨 Frontend Setup
+## Frontend Setup
 
-Create a `.env` inside `frontend/`:
+Create a `.env.local` inside `SkribbleX-FrontEnd/`:
 
 ```env
-VITE_DISCORD_CLIENT_ID=123456789012345678
-VITE_BACKEND_URL=https://your-domain.com
+NEXT_PUBLIC_DISCORD_CLIENT_ID=123456789012345678
+NEXT_PUBLIC_BACKEND_URL=https://your-domain.com
 ```
 
 Then:
 
 ```sh
-cd frontend
+cd SkribbleX-FrontEnd
 npm install
 npm run dev
 ```
 
-Runs on:
-
-```
-http://localhost:5173
-```
+Runs on `http://localhost:3000`.
 
 ---
 
-## 🧰 Development Setup
-
-### Start both services at once (recommended)
+## Development Setup
 
 Use two terminals:
 
 **Terminal 1 – Backend**
 
 ```sh
-cd backend
+cd SkribbleX-BackEnd
 npm run dev
 ```
 
 **Terminal 2 – Frontend**
 
 ```sh
-cd frontend
+cd SkribbleX-FrontEnd
 npm run dev
 ```
 
 ---
 
-## 🎮 Discord Setup
+## Discord Setup
 
 To run SkribbleX as a real Discord Activity:
 
@@ -202,8 +208,6 @@ https://your-domain.com/auth/callback
 
 ### 4. Add Activity URL mapping
 
-Example:
-
 ```
 Activity URL: https://your-domain.com
 Entrypoint:   /index.html
@@ -215,23 +219,20 @@ Inside Discord → Activities → Your Game.
 
 ---
 
-## 🌍 Deployment
+## Deployment
 
 ### Backend:
 
 - Use **PM2**, **Docker**, or a simple systemd service
 - Behind reverse proxy:
   - Nginx
-  - Caddy (empfohlen)
+  - Caddy (recommended)
   - Plesk Reverse Proxy
 
 ### Frontend:
 
 - `npm run build`
-- Serve `dist/` folder via:
-  - Nginx
-  - Caddy
-  - Plesk static hosting
+- Serve `out/` or `.next/` folder via your preferred static/Node host
 
 ### WebSockets:
 
@@ -244,20 +245,20 @@ Upgrade: websocket
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Pull requests welcome!
 Open issues for bugs, enhancements, or feature requests.
 
 ---
 
-## 📄 License
+## License
 
 MIT License — free to use, modify, and self-host.
 
 ---
 
-## ❤️ Credits
+## Credits
 
 Made with love for the Discord community.
 Inspired by the drawing/guessing genre — rebuilt from scratch as a modern Activity.

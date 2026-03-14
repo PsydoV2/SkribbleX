@@ -5,6 +5,7 @@ const config: Config = {
   testEnvironment: "node",
   testMatch: ["**/tests/**/*.test.ts"],
   clearMocks: true,
+  forceExit: true,
   moduleNameMapper: {
     // nanoid v5 ist ESM-only → CJS-kompatibler Mock
     "^nanoid$": "<rootDir>/tests/__mocks__/nanoid.ts",

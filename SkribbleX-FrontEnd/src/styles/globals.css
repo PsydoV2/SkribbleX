@@ -25,10 +25,13 @@
 
   /* Semantic */
   --danger: hsl(0, 100%, 61%);
+  --dangerToast: rgb(255, 56, 56, 0.3);
   --warning: hsl(42, 100%, 50%);
-  --success: rgb(24 65 1 / 0.7);
-  --success-border: rgb(45, 124, 0);
+  --warningToast: rgb(255, 179, 0, 0.3);
+  --success: rgb(45, 124, 0);
+  --successToast: rgba(24, 65, 1, 0.3);
   --info: hsl(195, 100%, 59%);
+  --infoToast: rgb(46, 203, 255, 0.3);
 
   /* Layout — game frame */
   --frame-max-w: 1200px;
@@ -53,7 +56,7 @@
   /* Shadows / glows */
   --glow-primary: 0 0 10px 1px var(--primary);
   --glow-danger: 0 0 10px 1px var(--danger);
-  --glow-success: 0 0 10px 1px var(--success-border);
+  --glow-success: 0 0 10px 1px var(--success);
   --glow-info: 0 0 10px 1px var(--info);
   --glow-warning: 0 0 10px 1px var(--warning);
 }

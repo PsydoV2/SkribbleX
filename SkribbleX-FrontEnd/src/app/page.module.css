@@ -196,9 +196,9 @@
 .mockupGuess {
   font-size: 0.82rem;
   font-weight: 700;
-  color: var(--success-border);
+  color: var(--success);
   background: var(--success);
-  border: 1px solid var(--success-border);
+  border: 1px solid var(--success);
   padding: 0.4rem 0.9rem;
   border-radius: 2rem;
   width: 100%;

@@ -34,7 +34,7 @@ export function useGameSocket(opts: UseGameSocketOptions) {
 
     socket.emit(
       "room:join",
-      { roomID, playerID: user.id, name: user.username },
+      { roomID, playerID: user.id, name: user.username, avatar: user.avatar },
       (res: { ok: boolean; room?: PublicRoom; error?: string }) => {
         if (res.ok && res.room) {
           optsRef.current.onRoomUpdate(res.room);

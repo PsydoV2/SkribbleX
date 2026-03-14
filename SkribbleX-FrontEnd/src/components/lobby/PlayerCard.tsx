@@ -18,7 +18,7 @@ export default function PlayerCard({
   isLocalUser,
   isDrawer,
 }: PlayerCardProps) {
-  const avatar = avatarUrl(player.playerID, null);
+  const avatar = avatarUrl(player.playerID, player.avatar);
 
   return (
     <div

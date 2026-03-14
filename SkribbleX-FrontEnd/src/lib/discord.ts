@@ -3,6 +3,13 @@ import type { DiscordUser } from "@/types/game";
 
 let sdkPromise: Promise<DiscordUser> | null = null;
 
+/** True when the app is running inside a Discord Activity iframe. */
+export function isInDiscordActivity(): boolean {
+  if (typeof window === "undefined") return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.has("instance_id") || params.has("frame_id");
+}
+
 export function getDiscordUser(): Promise<DiscordUser> {
   if (sdkPromise) return sdkPromise;
   sdkPromise = initDiscord();
@@ -23,12 +30,7 @@ async function initDiscord(): Promise<DiscordUser> {
     return mockUser();
   }
 
-  // Only attempt SDK init when inside the actual Discord Activity iframe.
-  // Discord injects instance_id/frame_id as query params on the Activity URL.
-  const params = new URLSearchParams(window.location.search);
-  const isDiscordActivity = params.has("instance_id") || params.has("frame_id");
-
-  if (!isDiscordActivity) {
+  if (!isInDiscordActivity()) {
     console.warn("[discord] Not inside Discord Activity — using mock");
     return mockUser();
   }
@@ -97,12 +99,21 @@ function timeout(ms: number, msg: string): Promise<never> {
   );
 }
 
-export function avatarUrl(userId: string, avatarHash: string | null): string {
-  if (!avatarHash) {
-    return `https://cdn.discordapp.com/embed/avatars/${Number(userId) % 5}.png`;
+export function avatarUrl(userId: string, avatarInput: string | null): string {
+  // Full URL stored directly (browser/guest users using e.g. DiceBear)
+  if (avatarInput?.startsWith("http")) return avatarInput;
+  // Discord avatar hash
+  if (avatarInput) {
+    const ext = avatarInput.startsWith("a_") ? "gif" : "png";
+    return `https://cdn.discordapp.com/avatars/${userId}/${avatarInput}.${ext}?size=64`;
   }
-  const ext = avatarHash.startsWith("a_") ? "gif" : "png";
-  return `https://cdn.discordapp.com/avatars/${userId}/${avatarHash}.${ext}?size=64`;
+  // Default Discord avatar (index based on userId)
+  return `https://cdn.discordapp.com/embed/avatars/${Number(userId) % 5}.png`;
+}
+
+/** Generate a deterministic DiceBear pixel-art avatar URL for browser guests. */
+export function guestAvatarUrl(seed: string): string {
+  return `https://api.dicebear.com/9.x/pixel-art/svg?seed=${encodeURIComponent(seed)}`;
 }
 
 function mockUser(): DiscordUser {

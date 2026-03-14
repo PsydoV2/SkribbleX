@@ -71,7 +71,7 @@
 }
 
 .guessed {
-  color: var(--success-border);
+  color: var(--success);
   font-size: 0.9rem;
   font-weight: 700;
   flex-shrink: 0;

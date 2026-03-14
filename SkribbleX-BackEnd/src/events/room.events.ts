@@ -25,13 +25,14 @@ export function registerRoomEvents(io: Server, socket: Socket) {
 
   // ─── room:join ──────────────────────────────────────────────────────────────
   // payload: { roomID, playerID, name }
-  socket.on("room:join", ({ roomID, playerID, name }, callback) => {
+  socket.on("room:join", ({ roomID, playerID, name, avatar }, callback) => {
     try {
       const room = roomService.joinRoom({
         roomID,
         socketId: socket.id,
         playerID,
         name,
+        avatar: avatar ?? null,
       });
 
       socket.join(roomID);

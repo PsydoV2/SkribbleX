@@ -2,18 +2,19 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { getSocket } from "@/socket";
-import { getDiscordUser } from "@/lib/discord";
+import { getDiscordUser, isInDiscordActivity, guestAvatarUrl } from "@/lib/discord";
 import { socketService } from "@/service/socket.service";
 import { useGameSocket } from "@/hooks/useGameSocket";
 import { useToast } from "@/hooks/ToastContext";
 import ConnectionStatus from "@/components/ConnectionStatus";
+import UsernameInput from "@/components/UsernameInput";
 import SelectMenu from "@/components/SelectMenu";
 import LobbyView from "@/components/lobby/LobbyView";
 import GameView from "@/components/game/GameView";
 import type { DiscordUser, PublicRoom, Language } from "@/types/game";
 import styles from "./game.module.css";
 
-type Screen = "loading" | "select" | "lobby" | "game";
+type Screen = "loading" | "username" | "select" | "lobby" | "game";
 
 export default function GamePage() {
   const socketRef = useRef<ReturnType<typeof getSocket> | null>(null);
@@ -33,15 +34,21 @@ export default function GamePage() {
   const [currentHint, setCurrentHint] = useState<string | null>(null);
 
   useEffect(() => {
-    getDiscordUser()
-      .then((u) => {
-        setUser(u);
-        setScreen("select");
-      })
-      .catch(() => {
-        showToast("error", "Could not load Discord identity");
-        setScreen("select");
-      });
+    if (isInDiscordActivity()) {
+      // Inside Discord Activity: fetch real Discord user
+      getDiscordUser()
+        .then((u) => {
+          setUser(u);
+          setScreen("select");
+        })
+        .catch(() => {
+          showToast("error", "Could not load Discord identity");
+          setScreen("username"); // fallback to guest mode
+        });
+    } else {
+      // Plain browser: let the user pick their own name
+      setScreen("username");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -124,6 +131,12 @@ export default function GamePage() {
     availableCategories: [],
   });
 
+  const handleConfirmUsername = (name: string) => {
+    const id = String(Math.floor(Math.random() * 900000) + 100000);
+    setUser({ id, username: name, discriminator: "0", avatar: guestAvatarUrl(id) });
+    setScreen("select");
+  };
+
   const handleCreateRoom = async () => {
     if (!user) return;
     try {
@@ -169,6 +182,10 @@ export default function GamePage() {
           <span className={styles.spinner} />
           <p>Connecting to Discord…</p>
         </div>
+      )}
+
+      {screen === "username" && (
+        <UsernameInput onConfirm={handleConfirmUsername} />
       )}
 
       {screen === "select" && (

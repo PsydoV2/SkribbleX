@@ -55,6 +55,7 @@ export function joinRoom(payload: {
   socketId: string;
   playerID: string;
   name: string;
+  avatar?: string | null;
 }): RoomState {
   const room = rooms.get(payload.roomID);
   if (!room) throw { status: 404, message: "Room not found" };
@@ -70,6 +71,7 @@ export function joinRoom(payload: {
     playerID: payload.playerID,
     socketId: payload.socketId,
     name: payload.name.trim().slice(0, 32),
+    avatar: payload.avatar ?? null,
     score: 0,
     hasGuessed: false,
   };

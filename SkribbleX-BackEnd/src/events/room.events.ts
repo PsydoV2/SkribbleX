@@ -27,7 +27,7 @@ export function registerRoomEvents(io: Server, socket: Socket) {
   // payload: { roomID, playerID, name }
   socket.on("room:join", ({ roomID, playerID, name, avatar }, callback) => {
     try {
-      const room = roomService.joinRoom({
+      const { room, reconnected } = roomService.joinRoom({
         roomID,
         socketId: socket.id,
         playerID,
@@ -36,14 +36,42 @@ export function registerRoomEvents(io: Server, socket: Socket) {
       });
 
       socket.join(roomID);
-      socketRoomMap.set(socket.id, roomID); // ← Mapping eintragen
+      socketRoomMap.set(socket.id, roomID);
 
-      callback?.({ ok: true, room: roomService.getRoomPublic(room) });
+      callback?.({ ok: true, room: roomService.getRoomPublic(room), reconnected });
 
-      socket.to(roomID).emit("room:player-joined", {
-        player: room.players[socket.id],
+      if (reconnected) {
+        // Inform others that the player is back
+        socket.to(roomID).emit("room:player-rejoined", {
+          player: room.players[socket.id],
+          room: roomService.getRoomPublic(room),
+        });
+      } else {
+        socket.to(roomID).emit("room:player-joined", {
+          player: room.players[socket.id],
+          room: roomService.getRoomPublic(room),
+        });
+      }
+    } catch (err: any) {
+      callback?.({ ok: false, error: err?.message ?? "Unknown error" });
+    }
+  });
+
+  // ─── room:kick ──────────────────────────────────────────────────────────────
+  socket.on("room:kick", ({ roomID, targetSocketId }, callback) => {
+    try {
+      const room = roomService.kickPlayer(roomID, socket.id, targetSocketId);
+
+      // Gekicktem Spieler Bescheid geben
+      io.to(targetSocketId).emit("room:kicked", { roomID });
+
+      // Alle anderen bekommen den aktualisierten Raum
+      io.to(roomID).emit("room:player-left", {
+        socketId: targetSocketId,
         room: roomService.getRoomPublic(room),
       });
+
+      callback?.({ ok: true });
     } catch (err: any) {
       callback?.({ ok: false, error: err?.message ?? "Unknown error" });
     }
@@ -163,11 +191,15 @@ export function registerRoomEvents(io: Server, socket: Socket) {
       const player = room.players[socket.id];
 
       if (result === "correct") {
-        socket.emit("game:guess-correct", { score: player.score });
+        socket.emit("game:guess-correct", {
+          score: player.score,
+          room: roomService.getRoomPublic(room),
+        });
 
         socket.to(roomID).emit("game:player-guessed", {
           playerID: player.playerID,
           name: player.name,
+          room: roomService.getRoomPublic(room),
         });
 
         if (roundOver) {
@@ -221,6 +253,7 @@ export function registerRoomEvents(io: Server, socket: Socket) {
     if (!room || room.drawerId !== socket.id) return;
     if (room.phase !== "playing") return;
 
+    room.strokeHistory.push(strokes);
     socket.to(roomID).emit("draw:stroke", { strokes });
   });
 
@@ -229,7 +262,28 @@ export function registerRoomEvents(io: Server, socket: Socket) {
     const room = roomService.getRoom(roomID);
     if (!room || room.drawerId !== socket.id) return;
 
+    room.strokeHistory = [];
     socket.to(roomID).emit("draw:clear");
+  });
+
+  // ─── draw:undo ──────────────────────────────────────────────────────────────
+  socket.on("draw:undo", ({ roomID }) => {
+    const room = roomService.getRoom(roomID);
+    if (!room || room.drawerId !== socket.id) return;
+    if (room.phase !== "playing") return;
+
+    room.strokeHistory.pop();
+    // Send all remaining strokes so clients can reconstruct the canvas
+    io.to(roomID).emit("draw:canvas-sync", { strokes: room.strokeHistory });
+  });
+
+  // ─── draw:fill ──────────────────────────────────────────────────────────────
+  socket.on("draw:fill", ({ roomID, x, y, color }) => {
+    const room = roomService.getRoom(roomID);
+    if (!room || room.drawerId !== socket.id) return;
+    if (room.phase !== "playing") return;
+
+    socket.to(roomID).emit("draw:fill", { x, y, color });
   });
 }
 

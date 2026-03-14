@@ -82,6 +82,26 @@
   min-height: 2px;
 }
 
+/* Tool buttons (fill etc.) */
+.toolBtn {
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-light);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background var(--t-fast);
+  border: 1px solid transparent;
+}
+
+.toolBtn:hover {
+  background: var(--border-muted);
+}
+
+.toolBtnActive {
+  border-color: var(--primary);
+  background: var(--primary-dim);
+}
+
 /* Clear */
 .clearBtn {
   padding: 0.3rem 0.6rem;

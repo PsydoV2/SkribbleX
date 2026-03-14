@@ -2,6 +2,8 @@
 import type { DiscordUser } from "@/types/game";
 
 let sdkPromise: Promise<DiscordUser> | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let discordSdkInstance: any = null;
 
 /** True when the app is running inside a Discord Activity iframe. */
 export function isInDiscordActivity(): boolean {
@@ -39,6 +41,7 @@ async function initDiscord(): Promise<DiscordUser> {
     const { DiscordSDK, patchUrlMappings } =
       await import("@discord/embedded-app-sdk");
     const sdk = new DiscordSDK(clientId);
+    discordSdkInstance = sdk;
 
     await Promise.race([
       sdk.ready(),
@@ -119,4 +122,60 @@ export function guestAvatarUrl(seed: string): string {
 function mockUser(): DiscordUser {
   const id = String(Math.floor(Math.random() * 9000) + 1000);
   return { id, username: `Player_${id}`, discriminator: "0", avatar: null };
+}
+
+/**
+ * Returns a set of Discord user IDs currently in the same voice channel.
+ * Only works inside a Discord Activity (after getDiscordUser() was called).
+ */
+export async function getVoiceParticipantIds(): Promise<Set<string>> {
+  if (!discordSdkInstance) return new Set();
+  try {
+    const channelId = discordSdkInstance.channelId;
+    if (!channelId) return new Set();
+    const channel = await discordSdkInstance.commands.getChannel({ channel_id: channelId });
+    const ids = new Set<string>(
+      (channel?.voice_states ?? []).map(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (vs: any) => vs.user?.id as string,
+      ).filter(Boolean),
+    );
+    return ids;
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * Subscribe to voice state changes in the current channel.
+ * Returns an unsubscribe function.
+ */
+export function subscribeToVoiceUpdates(
+  onUpdate: (participantIds: Set<string>) => void,
+): () => void {
+  if (!discordSdkInstance) return () => {};
+  try {
+    const channelId = discordSdkInstance.channelId;
+    if (!channelId) return () => {};
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { Events } = require("@discord/embedded-app-sdk");
+
+    const handler = () => {
+      getVoiceParticipantIds().then(onUpdate);
+    };
+
+    discordSdkInstance.subscribe(Events.VOICE_STATE_UPDATE, handler, { channel_id: channelId });
+
+    // Initial fetch
+    getVoiceParticipantIds().then(onUpdate);
+
+    return () => {
+      try {
+        discordSdkInstance.unsubscribe(Events.VOICE_STATE_UPDATE, handler, { channel_id: channelId });
+      } catch { /* ignore */ }
+    };
+  } catch {
+    return () => {};
+  }
 }

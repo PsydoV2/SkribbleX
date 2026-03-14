@@ -2,7 +2,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { getSocket } from "@/socket";
-import { getDiscordUser, isInDiscordActivity, guestAvatarUrl } from "@/lib/discord";
+import { getDiscordUser, isInDiscordActivity, guestAvatarUrl, subscribeToVoiceUpdates } from "@/lib/discord";
 import { socketService } from "@/service/socket.service";
 import { useGameSocket } from "@/hooks/useGameSocket";
 import { useToast } from "@/hooks/ToastContext";
@@ -32,6 +32,7 @@ export default function GamePage() {
   const [drawerWord, setDrawerWord] = useState<string | null>(null);
   const [wordChoices, setWordChoices] = useState<string[] | null>(null);
   const [currentHint, setCurrentHint] = useState<string | null>(null);
+  const [voiceParticipantIds, setVoiceParticipantIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isInDiscordActivity()) {
@@ -40,6 +41,9 @@ export default function GamePage() {
         .then((u) => {
           setUser(u);
           setScreen("select");
+          // After SDK is ready, subscribe to voice state changes
+          const unsub = subscribeToVoiceUpdates(setVoiceParticipantIds);
+          return () => unsub();
         })
         .catch(() => {
           showToast("error", "Could not load Discord identity");
@@ -70,13 +74,14 @@ export default function GamePage() {
 
   const inRoom = screen === "lobby" || screen === "game";
 
-  const { updateSettings, startGame, selectWord, leaveRoom, resetToLobby } =
+  const { updateSettings, startGame, selectWord, leaveRoom, resetToLobby, kickPlayer } =
     useGameSocket({
       user: inRoom ? user : null,
       roomID: inRoom ? (room?.roomID ?? null) : null,
       onRoomUpdate: (r) => setRoom(r),
       onPlayerJoined: ({ room: r }) => setRoom(r),
       onPlayerLeft: ({ room: r }) => setRoom(r),
+      onPlayerGuessed: ({ room: r }) => setRoom(r),
       onSelectingWord: ({ room: r }) => {
         // Drawer wählt ein Wort – alle Spieler gehen zum Spiel-Screen
         setDrawerWord(null);
@@ -112,6 +117,11 @@ export default function GamePage() {
         setScreen("lobby");
       },
       onHintUpdate: ({ hint }) => setCurrentHint(hint),
+      onKicked: () => {
+        showToast("error", "You were kicked from the room");
+        setRoom(null);
+        setScreen("select");
+      },
       onError: (msg) => showToast("error", msg),
     });
 
@@ -209,6 +219,8 @@ export default function GamePage() {
           }
           onStartGame={() => startGame(room.roomID)}
           onLeave={handleLeave}
+          onKick={(targetSocketId) => kickPlayer(room.roomID, targetSocketId)}
+          voiceParticipantIds={voiceParticipantIds}
         />
       )}
 
@@ -223,6 +235,7 @@ export default function GamePage() {
           onSelectWord={(word) => selectWord(room.roomID, word)}
           onBackLobby={handleBackLobby}
           onLeave={handleLeave}
+          voiceParticipantIds={voiceParticipantIds}
         />
       )}
     </div>

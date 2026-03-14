@@ -18,6 +18,8 @@ interface LobbyViewProps {
   }) => void;
   onStartGame: () => void;
   onLeave: () => void;
+  onKick: (targetSocketId: string) => void;
+  voiceParticipantIds?: Set<string>;
 }
 
 const LANG_LABELS: Record<Language, string> = {
@@ -32,6 +34,8 @@ export default function LobbyView({
   onUpdateSettings,
   onStartGame,
   onLeave,
+  onKick,
+  voiceParticipantIds = new Set(),
 }: LobbyViewProps) {
   const isHost = room.hostId === socketId;
   const playerCount = room.players.length;
@@ -123,6 +127,12 @@ export default function LobbyView({
                     isHost={room.hostId === p.socketId}
                     isLocalUser={p.playerID === localUser.id}
                     isDrawer={room.drawerId === p.socketId}
+                    isInVoice={voiceParticipantIds.has(p.playerID)}
+                    onKick={
+                      isHost && p.playerID !== localUser.id
+                        ? () => onKick(p.socketId)
+                        : undefined
+                    }
                   />
                 </motion.div>
               ))}

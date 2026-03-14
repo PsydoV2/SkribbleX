@@ -10,6 +10,7 @@ interface UseGameSocketOptions {
   onRoomUpdate: (room: PublicRoom) => void;
   onPlayerJoined: (data: { player: unknown; room: PublicRoom }) => void;
   onPlayerLeft: (data: { socketId: string; room: PublicRoom }) => void;
+  onPlayerGuessed: (data: { playerID: string; name: string; room: PublicRoom }) => void;
   onSelectingWord: (data: { room: PublicRoom }) => void;
   onWordChoices: (data: { words: string[] }) => void;
   onRoundStarted: (data: { room: PublicRoom }) => void;
@@ -18,6 +19,7 @@ interface UseGameSocketOptions {
   onGameEnded: (data: { players: unknown[] }) => void;
   onLobbyReset: (data: { room: PublicRoom }) => void;
   onHintUpdate: (data: { hint: string }) => void;
+  onKicked: () => void;
   onError: (msg: string) => void;
 }
 
@@ -32,17 +34,29 @@ export function useGameSocket(opts: UseGameSocketOptions) {
 
     const socket = getSocket();
 
-    socket.emit(
-      "room:join",
-      { roomID, playerID: user.id, name: user.username, avatar: user.avatar },
-      (res: { ok: boolean; room?: PublicRoom; error?: string }) => {
-        if (res.ok && res.room) {
-          optsRef.current.onRoomUpdate(res.room);
-        } else {
-          optsRef.current.onError(res.error ?? "Failed to join room");
-        }
-      },
-    );
+    const doJoin = () => {
+      const { user: u, roomID: r } = optsRef.current;
+      if (!u || !r) return;
+      socket.emit(
+        "room:join",
+        { roomID: r, playerID: u.id, name: u.username, avatar: u.avatar },
+        (res: { ok: boolean; room?: PublicRoom; reconnected?: boolean; error?: string }) => {
+          if (res.ok && res.room) {
+            optsRef.current.onRoomUpdate(res.room);
+          } else {
+            optsRef.current.onError(res.error ?? "Failed to join room");
+          }
+        },
+      );
+    };
+
+    doJoin();
+
+    // Re-join automatically on reconnect (e.g. after brief disconnect)
+    socket.on("connect", doJoin);
+    return () => {
+      socket.off("connect", doJoin);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opts.user?.id, opts.roomID]);
 
@@ -54,6 +68,7 @@ export function useGameSocket(opts: UseGameSocketOptions) {
     const handlers: [string, H][] = [
       ["room:player-joined", (d) => optsRef.current.onPlayerJoined(d as never)],
       ["room:player-left", (d) => optsRef.current.onPlayerLeft(d as never)],
+      ["game:player-guessed", (d) => optsRef.current.onPlayerGuessed(d as never)],
       [
         "lobby:settings-updated",
         (d) => optsRef.current.onRoomUpdate((d as { room: PublicRoom }).room),
@@ -66,6 +81,7 @@ export function useGameSocket(opts: UseGameSocketOptions) {
       ["game:ended", (d) => optsRef.current.onGameEnded(d as never)],
       ["game:lobby-reset", (d) => optsRef.current.onLobbyReset(d as never)],
       ["game:hint-update", (d) => optsRef.current.onHintUpdate(d as never)],
+      ["room:kicked", () => optsRef.current.onKicked()],
     ];
 
     for (const [event, handler] of handlers) {
@@ -127,6 +143,17 @@ export function useGameSocket(opts: UseGameSocketOptions) {
     socket.emit("room:leave", { roomID });
   }, []);
 
+  const kickPlayer = useCallback((roomID: string, targetSocketId: string) => {
+    const socket = getSocket();
+    socket.emit(
+      "room:kick",
+      { roomID, targetSocketId },
+      (res: { ok: boolean; error?: string }) => {
+        if (!res.ok) optsRef.current.onError(res.error ?? "Could not kick player");
+      },
+    );
+  }, []);
+
   const resetToLobby = useCallback((roomID: string) => {
     const socket = getSocket();
     socket.emit(
@@ -139,5 +166,5 @@ export function useGameSocket(opts: UseGameSocketOptions) {
     );
   }, []);
 
-  return { updateSettings, startGame, selectWord, leaveRoom, resetToLobby };
+  return { updateSettings, startGame, selectWord, leaveRoom, resetToLobby, kickPlayer };
 }

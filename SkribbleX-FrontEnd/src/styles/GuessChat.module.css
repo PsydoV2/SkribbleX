@@ -1,5 +1,5 @@
 /* src/styles/GuessChat.module.css */
-.chat {
+.chatWrap {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -40,7 +40,7 @@
 }
 
 /* chat = normal guess/chat message */
-.chat {
+.chatMsg {
   color: var(--text);
 }
 

@@ -34,6 +34,8 @@ export function createRoom(): string {
     wordSelectionTimerHandle: null,
     revealTimerHandles: [],
     currentHint: null,
+    strokeHistory: [],
+    usedWords: [],
     language: "de",
     categories: WordService.getCategories("de"),
   });
@@ -56,16 +58,29 @@ export function joinRoom(payload: {
   playerID: string;
   name: string;
   avatar?: string | null;
-}): RoomState {
+}): { room: RoomState; reconnected: boolean } {
   const room = rooms.get(payload.roomID);
   if (!room) throw { status: 404, message: "Room not found" };
+
+  // Check if player is reconnecting (same playerID, different socketId)
+  const existingEntry = Object.entries(room.players).find(
+    ([, p]) => p.playerID === payload.playerID,
+  );
+
+  if (existingEntry) {
+    const [oldSocketId, player] = existingEntry;
+    // Update socketId for the reconnected player
+    delete room.players[oldSocketId];
+    player.socketId = payload.socketId;
+    room.players[payload.socketId] = player;
+    if (room.hostId === oldSocketId) room.hostId = payload.socketId;
+    if (room.drawerId === oldSocketId) room.drawerId = payload.socketId;
+    console.debug(`[room] ${player.name} reconnected to ${payload.roomID}`);
+    return { room, reconnected: true };
+  }
+
   if (room.phase !== "lobby")
     throw { status: 400, message: "Game already started" };
-
-  const alreadyIn = Object.values(room.players).some(
-    (p) => p.playerID === payload.playerID,
-  );
-  if (alreadyIn) throw { status: 409, message: "Already in room" };
 
   const player: Player = {
     playerID: payload.playerID,
@@ -80,6 +95,29 @@ export function joinRoom(payload: {
   if (!room.hostId) room.hostId = payload.socketId;
 
   console.debug(`[room] ${player.name} joined ${payload.roomID}`);
+  return { room, reconnected: false };
+}
+
+// ─── Spieler kicken ───────────────────────────────────────────────────────────
+
+export function kickPlayer(
+  roomID: string,
+  hostSocketId: string,
+  targetSocketId: string,
+): RoomState {
+  const room = rooms.get(roomID);
+  if (!room) throw { status: 404, message: "Room not found" };
+  if (room.hostId !== hostSocketId)
+    throw { status: 403, message: "Only the host can kick players" };
+  if (room.phase !== "lobby")
+    throw { status: 400, message: "Can only kick in lobby" };
+  if (!room.players[targetSocketId])
+    throw { status: 404, message: "Player not found" };
+  if (targetSocketId === hostSocketId)
+    throw { status: 400, message: "Cannot kick yourself" };
+
+  delete room.players[targetSocketId];
+  console.debug(`[room] Host kicked socket ${targetSocketId} from ${roomID}`);
   return room;
 }
 
@@ -213,7 +251,7 @@ function startNextRound(
   room.round += 1;
   room.phase = "wordSelection";
   room.word = null;
-  room.wordChoices = WordService.getRandomWords(3, room.language, room.categories);
+  room.wordChoices = WordService.getRandomWords(3, room.language, room.categories, room.usedWords);
   room.currentHint = null;
   room.guessedPlayerIds = new Set();
   room.roundStartedAt = null;
@@ -247,7 +285,9 @@ function beginRound(
   onRoundEnd: RoundEndCallback,
 ): void {
   room.word = word;
+  room.usedWords.push(word);
   room.wordChoices = null;
+  room.strokeHistory = [];
   room.phase = "playing";
   room.roundStartedAt = Date.now();
   // Build initial hint: spaces visible, letters hidden as "_"
@@ -353,6 +393,7 @@ export function resetToLobby(roomID: string, requesterId: string): RoomState {
   room.word = null;
   room.wordChoices = null;
   room.currentHint = null;
+  room.usedWords = [];
   room.guessedPlayerIds = new Set();
   room.roundStartedAt = null;
 

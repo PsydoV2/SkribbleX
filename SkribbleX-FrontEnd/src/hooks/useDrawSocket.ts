@@ -23,11 +23,23 @@ export interface ReceivedStrokePayload {
   strokes: StrokePoint[];
 }
 
+export interface FillPayload {
+  x: number;
+  y: number;
+  color: string;
+}
+
+export interface CanvasSyncPayload {
+  strokes: StrokePoint[][];
+}
+
 interface UseDrawSocketOptions {
   roomID: string;
   isDrawer: boolean;
   onStroke: (payload: ReceivedStrokePayload) => void;
   onClear: () => void;
+  onFill: (payload: FillPayload) => void;
+  onCanvasSync: (payload: CanvasSyncPayload) => void;
 }
 
 export function useDrawSocket({
@@ -35,6 +47,8 @@ export function useDrawSocket({
   isDrawer,
   onStroke,
   onClear,
+  onFill,
+  onCanvasSync,
 }: UseDrawSocketOptions) {
   const socket = getSocket();
 
@@ -45,12 +59,18 @@ export function useDrawSocket({
       onStroke(p);
     };
     const handleClear = () => onClear();
+    const handleFill = (payload: unknown) => onFill(payload as FillPayload);
+    const handleSync = (payload: unknown) => onCanvasSync(payload as CanvasSyncPayload);
 
     socket.on("draw:stroke", handleStroke);
     socket.on("draw:clear", handleClear);
+    socket.on("draw:fill", handleFill);
+    socket.on("draw:canvas-sync", handleSync);
     return () => {
       socket.off("draw:stroke", handleStroke);
       socket.off("draw:clear", handleClear);
+      socket.off("draw:fill", handleFill);
+      socket.off("draw:canvas-sync", handleSync);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -68,5 +88,18 @@ export function useDrawSocket({
     socket.emit("draw:clear", { roomID });
   }, [isDrawer, roomID, socket]);
 
-  return { sendStroke, sendClear };
+  const sendFill = useCallback(
+    (x: number, y: number, color: string) => {
+      if (!isDrawer) return;
+      socket.emit("draw:fill", { roomID, x, y, color });
+    },
+    [isDrawer, roomID, socket],
+  );
+
+  const sendUndo = useCallback(() => {
+    if (!isDrawer) return;
+    socket.emit("draw:undo", { roomID });
+  }, [isDrawer, roomID, socket]);
+
+  return { sendStroke, sendClear, sendFill, sendUndo };
 }

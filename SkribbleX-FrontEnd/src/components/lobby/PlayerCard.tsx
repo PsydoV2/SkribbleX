@@ -10,6 +10,8 @@ interface PlayerCardProps {
   isHost: boolean;
   isLocalUser: boolean;
   isDrawer: boolean;
+  isInVoice?: boolean;
+  onKick?: () => void;
 }
 
 export default function PlayerCard({
@@ -17,6 +19,8 @@ export default function PlayerCard({
   isHost,
   isLocalUser,
   isDrawer,
+  isInVoice = false,
+  onKick,
 }: PlayerCardProps) {
   const avatar = avatarUrl(player.playerID, player.avatar);
 
@@ -56,6 +60,16 @@ export default function PlayerCard({
       </div>
 
       {player.hasGuessed && <span className={styles.guessed}>✓</span>}
+      {isInVoice && (
+        <span className={styles.voiceBadge} title="In voice channel">
+          🎤
+        </span>
+      )}
+      {onKick && (
+        <button className={styles.kickBtn} onClick={onKick} title="Kick player">
+          ✕
+        </button>
+      )}
     </div>
   );
 }

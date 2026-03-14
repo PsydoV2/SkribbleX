@@ -10,17 +10,88 @@ import {
 import type { StrokePoint, ReceivedStrokePayload } from "@/hooks/useDrawSocket";
 import styles from "@/styles/CanvasBoard.module.css";
 
+export type DrawTool = "brush" | "fill";
+
 export interface CanvasBoardHandle {
   clear: () => void;
   applyStrokes: (payload: ReceivedStrokePayload) => void;
+  applyFill: (x: number, y: number, color: string) => void;
+  replayAll: (batches: StrokePoint[][]) => void;
+  snapshot: () => string | null;
 }
 
 interface CanvasBoardProps {
   isDrawer: boolean;
   color: string;
   brushSize: number;
+  tool: DrawTool;
   onStroke: (strokes: StrokePoint[]) => void;
   onClear: () => void;
+  onFill: (x: number, y: number, color: string) => void;
+}
+
+function hexToRgba(hex: string): [number, number, number, number] {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return [r, g, b, 255];
+}
+
+function floodFill(
+  ctx: CanvasRenderingContext2D,
+  startX: number,
+  startY: number,
+  fillColor: string,
+): void {
+  const canvas = ctx.canvas;
+  const width = canvas.width;
+  const height = canvas.height;
+  const imageData = ctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+
+  const idx = (x: number, y: number) => (y * width + x) * 4;
+  const si = idx(Math.floor(startX), Math.floor(startY));
+  const targetR = data[si], targetG = data[si + 1], targetB = data[si + 2], targetA = data[si + 3];
+
+  const [fillR, fillG, fillB, fillA] = hexToRgba(fillColor);
+
+  // If target already matches fill color, nothing to do
+  if (targetR === fillR && targetG === fillG && targetB === fillB && targetA === fillA) return;
+
+  const tolerance = 30;
+  const matches = (i: number) =>
+    Math.abs(data[i] - targetR) <= tolerance &&
+    Math.abs(data[i + 1] - targetG) <= tolerance &&
+    Math.abs(data[i + 2] - targetB) <= tolerance &&
+    Math.abs(data[i + 3] - targetA) <= tolerance;
+
+  const stack: number[] = [Math.floor(startX) + Math.floor(startY) * width];
+  const visited = new Uint8Array(width * height);
+
+  while (stack.length) {
+    const pos = stack.pop()!;
+    if (visited[pos]) continue;
+    visited[pos] = 1;
+
+    const x = pos % width;
+    const y = (pos - x) / width;
+    const i = pos * 4;
+
+    if (!matches(i)) continue;
+
+    data[i] = fillR;
+    data[i + 1] = fillG;
+    data[i + 2] = fillB;
+    data[i + 3] = fillA;
+
+    if (x > 0) stack.push(pos - 1);
+    if (x < width - 1) stack.push(pos + 1);
+    if (y > 0) stack.push(pos - width);
+    if (y < height - 1) stack.push(pos + width);
+  }
+
+  ctx.putImageData(imageData, 0, 0);
 }
 
 function applyStrokesToCtx(
@@ -71,7 +142,7 @@ function applyStrokesToCtx(
 }
 
 const CanvasBoard = forwardRef<CanvasBoardHandle, CanvasBoardProps>(
-  function CanvasBoard({ isDrawer, color, brushSize, onStroke }, ref) {
+  function CanvasBoard({ isDrawer, color, brushSize, tool, onStroke, onFill }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const drawing = useRef(false);
     const pathBuffer = useRef<StrokePoint[]>([]);
@@ -87,6 +158,25 @@ const CanvasBoard = forwardRef<CanvasBoardHandle, CanvasBoardProps>(
         const ctx = canvasRef.current?.getContext("2d");
         if (!ctx) return;
         applyStrokesToCtx(ctx, payload.strokes);
+      },
+      applyFill(x: number, y: number, fillColor: string) {
+        const ctx = canvasRef.current?.getContext("2d");
+        if (!ctx) return;
+        floodFill(ctx, x, y, fillColor);
+      },
+      replayAll(batches: StrokePoint[][]) {
+        const c = canvasRef.current;
+        const ctx = c?.getContext("2d");
+        if (!ctx || !c) return;
+        ctx.clearRect(0, 0, c.width, c.height);
+        for (const batch of batches) {
+          applyStrokesToCtx(ctx, batch);
+        }
+      },
+      snapshot() {
+        const c = canvasRef.current;
+        if (!c) return null;
+        return c.toDataURL("image/png");
       },
     }));
 
@@ -133,11 +223,17 @@ const CanvasBoard = forwardRef<CanvasBoardHandle, CanvasBoardProps>(
     const startDraw = useCallback(
       (pos: { x: number; y: number }) => {
         if (!isDrawer) return;
+        if (tool === "fill") {
+          const ctx = canvasRef.current?.getContext("2d");
+          if (ctx) floodFill(ctx, pos.x, pos.y, color);
+          onFill(pos.x, pos.y, color);
+          return;
+        }
         drawing.current = true;
         pathBuffer.current = [{ ...pos, color, size: brushSize, type: "move" }];
         flushTimer.current = setInterval(flush, 32); // ~30fps batching
       },
-      [isDrawer, color, brushSize, flush],
+      [isDrawer, color, brushSize, tool, flush, onFill],
     );
 
     const continueDraw = useCallback(

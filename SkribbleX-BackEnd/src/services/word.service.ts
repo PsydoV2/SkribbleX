@@ -133,21 +133,36 @@ export class WordService {
     n: number,
     language: Language = "de",
     categories: string[] = [],
+    excludeWords: string[] = [],
   ): string[] {
     this.load();
     const normalizedCats = categories.map((c) => c.toLowerCase().trim());
+    const excluded = new Set(excludeWords.map((w) => w.toLowerCase()));
 
     const pool = this.words.filter((w) => {
       if (w.language !== language) return false;
+      if (excluded.has(w.word.toLowerCase())) return false;
       if (normalizedCats.length === 0) return true;
       return normalizedCats.includes(w.category.toLowerCase().trim());
     });
 
-    const source = pool.length > 0
-      ? pool
-      : this.words.filter((w) => w.language === language);
+    // If pool is empty after exclusion, fall back without exclusion filter
+    const source =
+      pool.length >= n
+        ? pool
+        : this.words.filter(
+            (w) =>
+              w.language === language &&
+              !excluded.has(w.word.toLowerCase()),
+          ).length >= n
+          ? this.words.filter(
+              (w) =>
+                w.language === language &&
+                !excluded.has(w.word.toLowerCase()),
+            )
+          : this.words.filter((w) => w.language === language);
 
-    // Shuffle and take n unique
+    // Shuffle and take n unique words
     const shuffled = [...source].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, Math.min(n, shuffled.length)).map((e) => e.word);
   }

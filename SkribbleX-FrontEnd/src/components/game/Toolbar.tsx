@@ -1,5 +1,6 @@
 // src/components/game/Toolbar.tsx
 "use client";
+import type { DrawTool } from "./CanvasBoard";
 import styles from "@/styles/Toolbar.module.css";
 
 const COLORS = [
@@ -26,16 +27,20 @@ const SIZES = [4, 8, 14, 22, 32];
 interface ToolbarProps {
   color: string;
   brushSize: number;
+  tool: DrawTool;
   onColor: (c: string) => void;
   onSize: (s: number) => void;
+  onTool: (t: DrawTool) => void;
   onClear: () => void;
 }
 
 export default function Toolbar({
   color,
   brushSize,
+  tool,
   onColor,
   onSize,
+  onTool,
   onClear,
 }: ToolbarProps) {
   return (
@@ -71,6 +76,17 @@ export default function Toolbar({
           </button>
         ))}
       </div>
+
+      <div className={styles.divider} />
+
+      {/* Tools: Fill */}
+      <button
+        className={`${styles.toolBtn} ${tool === "fill" ? styles.toolBtnActive : ""}`}
+        onClick={() => onTool(tool === "fill" ? "brush" : "fill")}
+        title="Fill tool"
+      >
+        🪣
+      </button>
 
       <div className={styles.divider} />
 

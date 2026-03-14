@@ -81,3 +81,13 @@
   font-style: italic;
   margin-top: 0.5rem;
 }
+
+.snapshot {
+  width: 100%;
+  max-width: 280px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-muted);
+  background: #fff;
+  object-fit: contain;
+  margin: 0 auto 0.25rem;
+}

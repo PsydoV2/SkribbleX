@@ -68,10 +68,10 @@ export default function GuessChat({
         : "Chat…";
 
   return (
-    <div className={styles.chat}>
+    <div className={styles.chatWrap}>
       <div className={styles.messages}>
         {messages.map((m) => (
-          <div key={m.id} className={`${styles.msg} ${styles[m.type]}`}>
+          <div key={m.id} className={`${styles.msg} ${m.type === "chat" ? styles.chatMsg : styles[m.type]}`}>
             {m.sender && <span className={styles.sender}>{m.sender}: </span>}
             <span className={styles.text}>{m.text}</span>
           </div>

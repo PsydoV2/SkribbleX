@@ -9,7 +9,8 @@ interface RoundEndOverlayProps {
   players: Player[];
   round: number;
   maxRounds: number;
-  onContinue?: () => void; // only host sees this (optional, auto-advances)
+  snapshot?: string | null;
+  onContinue?: () => void;
 }
 
 export default function RoundEndOverlay({
@@ -17,6 +18,7 @@ export default function RoundEndOverlay({
   players,
   round,
   maxRounds,
+  snapshot,
 }: RoundEndOverlayProps) {
   const sorted = [...players].sort((a, b) => b.score - a.score);
 
@@ -33,6 +35,10 @@ export default function RoundEndOverlay({
         animate={{ scale: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 22 }}
       >
+        {snapshot && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={snapshot} alt="Drawing" className={styles.snapshot} />
+        )}
         <p className={styles.label}>The word was</p>
         <h2 className={styles.word}>{word}</h2>
         <p className={styles.sub}>

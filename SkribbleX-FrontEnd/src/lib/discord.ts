@@ -24,11 +24,10 @@ async function initDiscord(): Promise<DiscordUser> {
     return mockUser();
   }
 
-  // Check if we're actually inside a Discord iframe
-  // Discord sets this query param on the Activity URL
-  const isDiscordActivity =
-    window.location.search.includes("instance_id") ||
-    window.self !== window.top;
+  // Only attempt SDK init when we're actually inside the Discord desktop/mobile client.
+  // Discord injects a specific query param on the Activity URL.
+  const params = new URLSearchParams(window.location.search);
+  const isDiscordActivity = params.has("instance_id") || params.has("frame_id");
 
   if (!isDiscordActivity) {
     console.warn("[discord] Not inside Discord Activity — using mock");

@@ -14,19 +14,31 @@ export function getSocket(): Socket {
   const params = new URLSearchParams(window.location.search);
   const isDiscordActivity = params.has("instance_id") || params.has("frame_id");
 
-  // In Discord: connect via relative /backend path — patchUrlMappings() in discord.ts
-  // rewrites this to the actual backend URL through Discord's proxy.
-  // In browser: connect directly to the backend URL.
-  const url = isDiscordActivity
-    ? `${window.location.origin}/backend`
-    : (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000");
-
-  socket = io(url, {
-    reconnection: true,
-    reconnectionAttempts: 10,
-    reconnectionDelay: 1000,
-    transports: ["websocket"],
-  });
+  if (isDiscordActivity) {
+    // Inside Discord Activity:
+    // Discord's proxy sits at https://{client_id}.discordsays.com and routes
+    // /backend/* → https://sfalter.de:8444/*.
+    // socket.io must use `path: "/backend/socket.io"` so that the Engine.IO
+    // handshake hits /backend/socket.io/... — Discord strips the /backend prefix
+    // and forwards /socket.io/... to the backend.
+    // Using io("origin/backend") would treat /backend as a namespace, causing
+    // the handshake to go to /socket.io/ (no prefix) which the proxy ignores.
+    socket = io(window.location.origin, {
+      path: "/backend/socket.io",
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      transports: ["websocket", "polling"],
+    });
+  } else {
+    // Plain browser: connect directly to the backend URL.
+    socket = io(process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000", {
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      transports: ["websocket"],
+    });
+  }
 
   return socket;
 }

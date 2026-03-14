@@ -16,7 +16,6 @@ async function initDiscord(): Promise<DiscordUser> {
 
   const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
 
-  // No client ID → local dev mock
   if (!clientId) {
     console.warn(
       "[discord] NEXT_PUBLIC_DISCORD_CLIENT_ID not set — using mock",
@@ -24,8 +23,8 @@ async function initDiscord(): Promise<DiscordUser> {
     return mockUser();
   }
 
-  // Only attempt SDK init when we're actually inside the Discord desktop/mobile client.
-  // Discord injects a specific query param on the Activity URL.
+  // Only attempt SDK init when inside the actual Discord Activity iframe.
+  // Discord injects instance_id/frame_id as query params on the Activity URL.
   const params = new URLSearchParams(window.location.search);
   const isDiscordActivity = params.has("instance_id") || params.has("frame_id");
 
@@ -35,13 +34,22 @@ async function initDiscord(): Promise<DiscordUser> {
   }
 
   try {
-    const { DiscordSDK } = await import("@discord/embedded-app-sdk");
+    const { DiscordSDK, patchUrlMappings } =
+      await import("@discord/embedded-app-sdk");
     const sdk = new DiscordSDK(clientId);
 
-    // Timeout so a broken SDK init never freezes the UI
     await Promise.race([
       sdk.ready(),
       timeout(8000, "Discord SDK ready() timed out"),
+    ]);
+
+    // Patch all fetch/WebSocket/XHR calls so they go through Discord's proxy.
+    // The prefix "/backend" must match the URL Mapping in the Developer Portal.
+    patchUrlMappings([
+      {
+        prefix: "/backend",
+        target: process.env.NEXT_PUBLIC_BACKEND_HOST ?? "",
+      },
     ]);
 
     const { code } = await sdk.commands.authorize({
@@ -52,16 +60,13 @@ async function initDiscord(): Promise<DiscordUser> {
       scope: ["identify"],
     });
 
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
-
-    const tokenRes = await fetch(`${backendUrl}/api/discord/token`, {
+    const tokenRes = await fetch("/backend/api/discord/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code }),
     });
 
     if (!tokenRes.ok) throw new Error("Token exchange failed");
-
     const { access_token } = await tokenRes.json();
 
     await sdk.commands.authenticate({ access_token });
@@ -71,7 +76,6 @@ async function initDiscord(): Promise<DiscordUser> {
     });
 
     if (!userRes.ok) throw new Error("Failed to fetch Discord user");
-
     const user = await userRes.json();
 
     return {
@@ -82,7 +86,6 @@ async function initDiscord(): Promise<DiscordUser> {
     };
   } catch (err) {
     console.warn("[discord] SDK init failed, falling back to mock:", err);
-    // Reset so next call retries instead of serving the failed promise
     sdkPromise = null;
     return mockUser();
   }

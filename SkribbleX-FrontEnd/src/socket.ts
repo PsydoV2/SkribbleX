@@ -1,20 +1,27 @@
 // src/socket.ts
-// Socket is created lazily (only on the client) to avoid SSR crashes.
-// Import `getSocket()` instead of `socket` directly when you need the instance.
-
-import { io, type Socket } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
 
 let socket: Socket | null = null;
 
 export function getSocket(): Socket {
-  if (!socket) {
-    const url = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080";
+  if (socket) return socket;
 
-    socket = io(url, {
-      autoConnect: true,
-      reconnection: true,
-      reconnectionAttempts: 5,
-    });
-  }
+  const params = new URLSearchParams(window.location.search);
+  const isDiscordActivity = params.has("instance_id") || params.has("frame_id");
+
+  // In Discord: connect via relative /backend path — patchUrlMappings() in discord.ts
+  // rewrites this to the actual backend URL through Discord's proxy.
+  // In browser: connect directly to the backend URL.
+  const url = isDiscordActivity
+    ? `${window.location.origin}/backend`
+    : (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080");
+
+  socket = io(url, {
+    reconnection: true,
+    reconnectionAttempts: 10,
+    reconnectionDelay: 1000,
+    transports: ["websocket"],
+  });
+
   return socket;
 }

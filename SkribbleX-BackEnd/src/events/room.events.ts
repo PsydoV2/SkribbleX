@@ -1,6 +1,7 @@
 // src/socket/room.events.ts
 import type { Server, Socket } from "socket.io";
 import * as roomService from "../services/room.service";
+import type { RoomState } from "../types/RoomState";
 import { LogHelper } from "../utils/LogHelper";
 
 const ROUND_END_DELAY_MS = 5_000;
@@ -97,13 +98,50 @@ export function registerRoomEvents(io: Server, socket: Socket) {
   // ─── game:start ─────────────────────────────────────────────────────────────
   socket.on("game:start", ({ roomID }, callback) => {
     try {
-      const room = roomService.startGame(roomID, socket.id, onRoundEnd(io));
+      const room = roomService.startGame(
+        roomID,
+        socket.id,
+        onRoundEnd(io),
+        onRoundPlaying(io),
+      );
 
+      // Alle Spieler gehen in die Wortauswahl-Phase
+      io.to(roomID).emit("game:selecting-word", {
+        room: roomService.getRoomPublic(room),
+      });
+
+      // Nur der Drawer bekommt die 3 Wortoptionen
+      io.to(room.drawerId!).emit("game:word-choices", {
+        words: room.wordChoices,
+      });
+
+      callback?.({ ok: true });
+    } catch (err: any) {
+      callback?.({ ok: false, error: err?.message ?? "Unknown error" });
+    }
+  });
+
+  // ─── game:select-word ────────────────────────────────────────────────────────
+  // Der Drawer wählt eines der 3 angebotenen Wörter
+  socket.on("game:select-word", ({ roomID, word }, callback) => {
+    try {
+      const room = roomService.selectWord(
+        roomID,
+        socket.id,
+        word,
+        onRoundEnd(io),
+      );
+
+      // Runde startet für alle
       io.to(roomID).emit("game:round-started", {
         room: roomService.getRoomPublic(room),
       });
 
+      // Drawer bekommt das Wort zur Bestätigung
       io.to(room.drawerId!).emit("game:word-reveal", { word: room.word });
+
+      // Buchstaben-Aufdeckung planen
+      scheduleHintReveals(io, room);
 
       callback?.({ ok: true });
     } catch (err: any) {
@@ -208,6 +246,20 @@ function handleLeave(io: Server, socket: Socket, roomID: string): void {
   });
 }
 
+// Wird aufgerufen wenn der Drawer ein Wort gewählt hat (oder auto-select)
+function onRoundPlaying(io: Server): roomService.OnRoundPlayingCallback {
+  return (roomID, word) => {
+    const room = roomService.getRoom(roomID);
+    if (!room) return;
+
+    io.to(roomID).emit("game:round-started", {
+      room: roomService.getRoomPublic(room),
+    });
+    io.to(room.drawerId!).emit("game:word-reveal", { word });
+    scheduleHintReveals(io, room);
+  };
+}
+
 // Gibt eine Callback-Funktion zurück die der Service aufruft wenn der Timer abläuft
 function onRoundEnd(io: Server): roomService.RoundEndCallback {
   return (roomID, word, isGameEnd) => {
@@ -229,9 +281,9 @@ function handleRoundEnd(
 
   if (isGameEnd) {
     setTimeout(() => {
-      const room = roomService.getRoom(roomID);
+      const r = roomService.getRoom(roomID);
       io.to(roomID).emit("game:ended", {
-        players: room ? Object.values(room.players) : [],
+        players: r ? Object.values(r.players) : [],
       });
     }, ROUND_END_DELAY_MS);
     return;
@@ -239,13 +291,52 @@ function handleRoundEnd(
 
   setTimeout(() => {
     try {
-      const room = roomService.nextRound(roomID, onRoundEnd(io));
-      io.to(roomID).emit("game:round-started", {
-        room: roomService.getRoomPublic(room),
+      const nextRoom = roomService.nextRound(
+        roomID,
+        onRoundEnd(io),
+        onRoundPlaying(io),
+      );
+      // Alle Spieler gehen in die Wortauswahl-Phase
+      io.to(roomID).emit("game:selecting-word", {
+        room: roomService.getRoomPublic(nextRoom),
       });
-      io.to(room.drawerId!).emit("game:word-reveal", { word: room.word });
+      // Nur der neue Drawer bekommt die Wortoptionen
+      io.to(nextRoom.drawerId!).emit("game:word-choices", {
+        words: nextRoom.wordChoices,
+      });
     } catch {
       // Raum existiert nicht mehr – kein Problem
     }
   }, ROUND_END_DELAY_MS);
+}
+
+// ─── Buchstaben-Aufdeckung ────────────────────────────────────────────────────
+
+function scheduleHintReveals(io: Server, room: RoomState): void {
+  // Buchstaben werden bei 30%, 55% und 75% der Rundenzeit aufgedeckt
+  const revealRatios = [0.30, 0.55, 0.75];
+
+  for (const ratio of revealRatios) {
+    const delay = Math.round(ratio * room.roundDurationMs);
+    const handle = setTimeout(() => {
+      if (room.phase !== "playing" || !room.word || !room.currentHint) return;
+      room.currentHint = revealNextLetter(room.word, room.currentHint);
+      io.to(room.roomID).emit("game:hint-update", { hint: room.currentHint });
+    }, delay);
+    room.revealTimerHandles.push(handle);
+  }
+}
+
+function revealNextLetter(word: string, hint: string): string {
+  const unrevealed: number[] = [];
+  for (let i = 0; i < word.length; i++) {
+    if (word[i] !== " " && hint[i] === "_") {
+      unrevealed.push(i);
+    }
+  }
+  if (unrevealed.length === 0) return hint;
+  const idx = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+  const chars = hint.split("");
+  chars[idx] = word[idx];
+  return chars.join("");
 }

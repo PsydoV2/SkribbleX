@@ -1,7 +1,7 @@
 // src/types/game.ts
 // Mirror of the backend's getRoomPublic() shape — no secret word ever comes here.
 
-export type GamePhase = "lobby" | "playing" | "roundEnd" | "gameEnd";
+export type GamePhase = "lobby" | "wordSelection" | "playing" | "roundEnd" | "gameEnd";
 export type Language = "de" | "en";
 
 export interface Player {
@@ -21,6 +21,7 @@ export interface PublicRoom {
   maxRounds: number;
   phase: GamePhase;
   wordLength: number | null;
+  currentHint: string | null;
   timeLeftMs: number | null;
   language: Language;
   categories: string[];

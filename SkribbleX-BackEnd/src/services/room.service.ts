@@ -8,6 +8,7 @@ const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const nano = customAlphabet(alphabet, 6);
 
 const ROUND_DURATION_MS = 80_000;
+const WORD_SELECTION_TIMEOUT_MS = 15_000;
 
 const rooms = new Map<string, RoomState>();
 
@@ -22,6 +23,7 @@ export function createRoom(): string {
     hostId: null,
     drawerId: null,
     word: null,
+    wordChoices: null,
     round: 0,
     maxRounds: 3,
     roundDurationMs: ROUND_DURATION_MS,
@@ -29,6 +31,9 @@ export function createRoom(): string {
     guessedPlayerIds: new Set(),
     roundStartedAt: null,
     roundTimerHandle: null,
+    wordSelectionTimerHandle: null,
+    revealTimerHandles: [],
+    currentHint: null,
     language: "de",
     categories: WordService.getCategories("de"),
   });
@@ -90,7 +95,7 @@ export function leaveRoom(roomID: string, socketId: string): RoomState | null {
   }
 
   if (Object.keys(room.players).length === 0) {
-    clearRoundTimer(room);
+    clearAllTimers(room);
     rooms.delete(roomID);
     console.debug(`[room] Deleted empty room: ${roomID}`);
     return null;
@@ -146,10 +151,13 @@ export type RoundEndCallback = (
   isGameEnd: boolean,
 ) => void;
 
+export type OnRoundPlayingCallback = (roomID: string, word: string) => void;
+
 export function startGame(
   roomID: string,
   socketId: string,
   onRoundEnd: RoundEndCallback,
+  onRoundPlaying: OnRoundPlayingCallback = () => {},
 ): RoomState {
   const room = rooms.get(roomID);
   if (!room) throw { status: 404, message: "Room not found" };
@@ -160,7 +168,34 @@ export function startGame(
   if (room.phase !== "lobby")
     throw { status: 400, message: "Game already started" };
 
-  return startNextRound(room, onRoundEnd);
+  return startNextRound(room, onRoundEnd, onRoundPlaying);
+}
+
+// ─── Wort auswählen (Drawer) ──────────────────────────────────────────────────
+
+export function selectWord(
+  roomID: string,
+  socketId: string,
+  word: string,
+  onRoundEnd: RoundEndCallback,
+): RoomState {
+  const room = rooms.get(roomID);
+  if (!room) throw { status: 404, message: "Room not found" };
+  if (room.phase !== "wordSelection")
+    throw { status: 400, message: "Not in word selection phase" };
+  if (room.drawerId !== socketId)
+    throw { status: 403, message: "Only the drawer can select a word" };
+  if (!room.wordChoices?.includes(word))
+    throw { status: 400, message: "Invalid word choice" };
+
+  // Cancel auto-selection timer
+  if (room.wordSelectionTimerHandle) {
+    clearTimeout(room.wordSelectionTimerHandle);
+    room.wordSelectionTimerHandle = null;
+  }
+
+  beginRound(room, word, onRoundEnd);
+  return room;
 }
 
 // ─── Runde starten (intern) ───────────────────────────────────────────────────
@@ -168,15 +203,18 @@ export function startGame(
 function startNextRound(
   room: RoomState,
   onRoundEnd: RoundEndCallback,
+  onRoundPlaying: OnRoundPlayingCallback,
 ): RoomState {
   const playerIds = Object.keys(room.players);
-  clearRoundTimer(room);
+  clearAllTimers(room);
 
   room.round += 1;
-  room.phase = "playing";
-  room.word = WordService.getRandomWord(room.language, room.categories);
+  room.phase = "wordSelection";
+  room.word = null;
+  room.wordChoices = WordService.getRandomWords(3, room.language, room.categories);
+  room.currentHint = null;
   room.guessedPlayerIds = new Set();
-  room.roundStartedAt = Date.now();
+  room.roundStartedAt = null;
 
   const drawerIndex = (room.round - 1) % playerIds.length;
   room.drawerId = playerIds[drawerIndex];
@@ -185,17 +223,48 @@ function startNextRound(
     p.hasGuessed = false;
   }
 
+  // Auto-select first word if drawer doesn't respond in time
+  room.wordSelectionTimerHandle = setTimeout(() => {
+    if (room.phase !== "wordSelection") return;
+    const autoWord = room.wordChoices![0];
+    beginRound(room, autoWord, onRoundEnd);
+    onRoundPlaying(room.roomID, autoWord);
+  }, WORD_SELECTION_TIMEOUT_MS);
+
+  console.debug(
+    `[room] Round ${room.round} word selection in ${room.roomID}, drawer: ${room.drawerId}`,
+  );
+  return room;
+}
+
+// ─── Runde spielen (intern) ───────────────────────────────────────────────────
+
+function beginRound(
+  room: RoomState,
+  word: string,
+  onRoundEnd: RoundEndCallback,
+): void {
+  room.word = word;
+  room.wordChoices = null;
+  room.phase = "playing";
+  room.roundStartedAt = Date.now();
+  // Build initial hint: spaces visible, letters hidden as "_"
+  room.currentHint = word
+    .split("")
+    .map((c) => (c === " " ? " " : "_"))
+    .join("");
+  room.revealTimerHandles = [];
+
   room.roundTimerHandle = setTimeout(() => {
     if (room.phase !== "playing") return;
-    const word = room.word!;
+    const w = room.word!;
     const isGameEnd = endRound(room);
-    onRoundEnd(room.roomID, word, isGameEnd);
+    onRoundEnd(room.roomID, w, isGameEnd);
   }, room.roundDurationMs);
 
   console.debug(
-    `[room] Round ${room.round} started in ${room.roomID}, drawer: ${room.drawerId}`,
+    `[room] Round ${room.round} playing in ${room.roomID}, word: ${word}`,
   );
-  return room;
 }
 
 // ─── Guess verarbeiten ────────────────────────────────────────────────────────
@@ -232,7 +301,7 @@ export function processGuess(payload: {
 
     if (allGuessed) {
       awardDrawerPoints(room);
-      const isGameEnd = endRound(room);
+      endRound(room);
       return { result: "correct", room, roundOver: true };
     }
 
@@ -245,7 +314,7 @@ export function processGuess(payload: {
 // ─── Runde beenden ────────────────────────────────────────────────────────────
 
 export function endRound(room: RoomState): boolean {
-  clearRoundTimer(room);
+  clearAllTimers(room);
   const isGameEnd = room.round >= room.maxRounds;
   room.phase = isGameEnd ? "gameEnd" : "roundEnd";
   return isGameEnd;
@@ -254,10 +323,11 @@ export function endRound(room: RoomState): boolean {
 export function nextRound(
   roomID: string,
   onRoundEnd: RoundEndCallback,
+  onRoundPlaying: OnRoundPlayingCallback = () => {},
 ): RoomState {
   const room = rooms.get(roomID);
   if (!room) throw { status: 404, message: "Room not found" };
-  return startNextRound(room, onRoundEnd);
+  return startNextRound(room, onRoundEnd, onRoundPlaying);
 }
 
 // ─── Lobby zurücksetzen ───────────────────────────────────────────────────────
@@ -268,7 +338,7 @@ export function resetToLobby(roomID: string, requesterId: string): RoomState {
   if (room.hostId !== requesterId)
     throw { status: 403, message: "Only the host can reset" };
 
-  clearRoundTimer(room);
+  clearAllTimers(room);
 
   for (const player of Object.values(room.players)) {
     player.score = 0;
@@ -279,6 +349,8 @@ export function resetToLobby(roomID: string, requesterId: string): RoomState {
   room.round = 0;
   room.drawerId = null;
   room.word = null;
+  room.wordChoices = null;
+  room.currentHint = null;
   room.guessedPlayerIds = new Set();
   room.roundStartedAt = null;
 
@@ -305,11 +377,19 @@ function awardDrawerPoints(room: RoomState): void {
 
 // ─── Timer aufräumen ─────────────────────────────────────────────────────────
 
-function clearRoundTimer(room: RoomState): void {
+function clearAllTimers(room: RoomState): void {
   if (room.roundTimerHandle) {
     clearTimeout(room.roundTimerHandle);
     room.roundTimerHandle = null;
   }
+  if (room.wordSelectionTimerHandle) {
+    clearTimeout(room.wordSelectionTimerHandle);
+    room.wordSelectionTimerHandle = null;
+  }
+  for (const handle of room.revealTimerHandles) {
+    clearTimeout(handle);
+  }
+  room.revealTimerHandles = [];
 }
 
 // ─── Serialisierbare Room-Daten (ohne Wort!) ──────────────────────────────────
@@ -329,6 +409,7 @@ export function getRoomPublic(room: RoomState) {
     maxRounds: room.maxRounds,
     phase: room.phase,
     wordLength: room.word?.length ?? null,
+    currentHint: room.currentHint ?? null,
     timeLeftMs,
     language: room.language,
     categories: room.categories,

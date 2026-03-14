@@ -29,6 +29,8 @@ export default function GamePage() {
   const [room, setRoom] = useState<PublicRoom | null>(null);
   const [socketId, setSocketId] = useState<string>("");
   const [drawerWord, setDrawerWord] = useState<string | null>(null);
+  const [wordChoices, setWordChoices] = useState<string[] | null>(null);
+  const [currentHint, setCurrentHint] = useState<string | null>(null);
 
   useEffect(() => {
     getDiscordUser()
@@ -61,30 +63,50 @@ export default function GamePage() {
 
   const inRoom = screen === "lobby" || screen === "game";
 
-  const { updateSettings, startGame, leaveRoom, resetToLobby } = useGameSocket({
-    user: inRoom ? user : null,
-    roomID: inRoom ? (room?.roomID ?? null) : null,
-    onRoomUpdate: (r) => setRoom(r),
-    onPlayerJoined: ({ room: r }) => setRoom(r),
-    onPlayerLeft: ({ room: r }) => setRoom(r),
-    onRoundStarted: ({ room: r }) => {
-      setDrawerWord(null);
-      setRoom(r);
-      setScreen("game");
-    },
-    onWordReveal: ({ word }) => setDrawerWord(word),
-    onRoundEnded: (d) => {
-      if (d.room) setRoom(d.room);
-      setDrawerWord(null);
-    },
-    onGameEnded: () => {}, // GameView handles end screen
-    onLobbyReset: ({ room: r }) => {
-      setRoom(r);
-      setDrawerWord(null);
-      setScreen("lobby");
-    },
-    onError: (msg) => showToast("error", msg),
-  });
+  const { updateSettings, startGame, selectWord, leaveRoom, resetToLobby } =
+    useGameSocket({
+      user: inRoom ? user : null,
+      roomID: inRoom ? (room?.roomID ?? null) : null,
+      onRoomUpdate: (r) => setRoom(r),
+      onPlayerJoined: ({ room: r }) => setRoom(r),
+      onPlayerLeft: ({ room: r }) => setRoom(r),
+      onSelectingWord: ({ room: r }) => {
+        // Drawer wählt ein Wort – alle Spieler gehen zum Spiel-Screen
+        setDrawerWord(null);
+        setWordChoices(null);
+        setCurrentHint(null);
+        setRoom(r);
+        setScreen("game");
+      },
+      onWordChoices: ({ words }) => {
+        // Nur der Drawer empfängt dieses Event
+        setWordChoices(words);
+      },
+      onRoundStarted: ({ room: r }) => {
+        // Wort wurde gewählt – Runde startet
+        setWordChoices(null);
+        setCurrentHint(r.currentHint);
+        setRoom(r);
+        setScreen("game");
+      },
+      onWordReveal: ({ word }) => setDrawerWord(word),
+      onRoundEnded: (d) => {
+        if (d.room) setRoom(d.room);
+        setDrawerWord(null);
+        setWordChoices(null);
+        setCurrentHint(null);
+      },
+      onGameEnded: () => {}, // GameView handles end screen
+      onLobbyReset: ({ room: r }) => {
+        setRoom(r);
+        setDrawerWord(null);
+        setWordChoices(null);
+        setCurrentHint(null);
+        setScreen("lobby");
+      },
+      onHintUpdate: ({ hint }) => setCurrentHint(hint),
+      onError: (msg) => showToast("error", msg),
+    });
 
   const emptyRoom = (roomID: string, hostId: string | null): PublicRoom => ({
     roomID,
@@ -95,6 +117,7 @@ export default function GamePage() {
     maxRounds: 3,
     phase: "lobby",
     wordLength: null,
+    currentHint: null,
     timeLeftMs: null,
     language: "de",
     categories: [],
@@ -122,20 +145,17 @@ export default function GamePage() {
     if (room) leaveRoom(room.roomID);
     setRoom(null);
     setDrawerWord(null);
+    setWordChoices(null);
+    setCurrentHint(null);
     setScreen("select");
   };
 
   const handleBackLobby = () => {
     if (!room) return;
-    // Host triggers reset → backend emits game:lobby-reset to all → onLobbyReset fires
-    // Non-host: wait for the event (host will trigger it)
     const isHost = room.hostId === socketId;
     if (isHost) {
       resetToLobby(room.roomID);
-    }
-    // Non-hosts: the onLobbyReset handler above transitions them automatically
-    // when the host clicks Back to Lobby. If they're not host, show a hint.
-    else {
+    } else {
       showToast("info", "Waiting for host to return to lobby…");
     }
   };
@@ -181,6 +201,9 @@ export default function GamePage() {
           localUser={user}
           socketId={socketId}
           drawerWord={drawerWord}
+          wordChoices={wordChoices}
+          currentHint={currentHint}
+          onSelectWord={(word) => selectWord(room.roomID, word)}
           onBackLobby={handleBackLobby}
           onLeave={handleLeave}
         />

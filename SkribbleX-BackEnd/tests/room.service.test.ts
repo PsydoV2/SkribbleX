@@ -5,6 +5,7 @@ import {
   joinRoom,
   leaveRoom,
   startGame,
+  selectWord,
   processGuess,
   endRound,
   nextRound,
@@ -17,6 +18,7 @@ import {
 jest.mock("../src/services/word.service", () => ({
   WordService: {
     getRandomWord: jest.fn(() => "Katze"),
+    getRandomWords: jest.fn(() => ["Katze", "Hund", "Pferd"]),
     getCategories: jest.fn((lang: string) =>
       lang === "de"
         ? [
@@ -65,11 +67,18 @@ function setupRoomWithPlayers(count: number = 2) {
   return { roomID, sockets };
 }
 
+/**
+ * Starts a game AND immediately selects the first word choice,
+ * so the room is in "playing" phase when returned.
+ */
 function setupStartedGame(playerCount: number = 2) {
   const { roomID, sockets } = setupRoomWithPlayers(playerCount);
   const onRoundEnd = jest.fn();
-  const room = startGame(roomID, sockets[0], onRoundEnd);
-  return { roomID, sockets, onRoundEnd, room };
+  startGame(roomID, sockets[0], onRoundEnd);
+  // Bypass word selection: pick first choice so we're in "playing" phase
+  const selRoom = getRoom(roomID)!;
+  selectWord(roomID, selRoom.drawerId!, selRoom.wordChoices![0], onRoundEnd);
+  return { roomID, sockets, onRoundEnd, room: getRoom(roomID)! };
 }
 
 function getNonDrawer(roomID: string, sockets: string[]) {
@@ -358,15 +367,27 @@ describe("updateSettings", () => {
 // ─── startGame ───────────────────────────────────────────────────────────────
 
 describe("startGame", () => {
-  it("setzt Phase auf playing", () => {
-    expect(setupStartedGame().room.phase).toBe("playing");
+  it("setzt Phase auf wordSelection", () => {
+    const { roomID, sockets } = setupRoomWithPlayers(2);
+    const room = startGame(roomID, sockets[0], jest.fn());
+    expect(room.phase).toBe("wordSelection");
+  });
+
+  it("bietet 3 Wortoptionen an", () => {
+    const { roomID, sockets } = setupRoomWithPlayers(2);
+    const room = startGame(roomID, sockets[0], jest.fn());
+    expect(room.wordChoices).toHaveLength(3);
   });
 
   it("setzt Runde auf 1", () => {
     expect(setupStartedGame().room.round).toBe(1);
   });
 
-  it("setzt ein Wort", () => {
+  it("nach selectWord ist Phase playing", () => {
+    expect(setupStartedGame().room.phase).toBe("playing");
+  });
+
+  it("nach selectWord ist Wort gesetzt", () => {
     expect(setupStartedGame().room.word).toBe("Katze");
   });
 
@@ -379,7 +400,7 @@ describe("startGame", () => {
     expect(room.drawerId).toBe("socket-0");
   });
 
-  it("setzt roundStartedAt", () => {
+  it("setzt roundStartedAt nach Wortwahl", () => {
     const before = Date.now();
     const { room } = setupStartedGame();
     expect(room.roundStartedAt).toBeGreaterThanOrEqual(before);
@@ -395,6 +416,11 @@ describe("startGame", () => {
     Object.values(room.players).forEach((p) =>
       expect(p.hasGuessed).toBe(false),
     );
+  });
+
+  it("hint wird nach Wortwahl gesetzt", () => {
+    const { room } = setupStartedGame();
+    expect(room.currentHint).toBe("_____"); // "Katze" → 5 underscores
   });
 
   it("wirft 403 wenn Nicht-Host startet", () => {
@@ -445,6 +471,60 @@ describe("startGame", () => {
     jest.advanceTimersByTime(80_000);
     expect(onRoundEnd).not.toHaveBeenCalled();
     jest.useRealTimers();
+  });
+});
+
+// ─── selectWord ──────────────────────────────────────────────────────────────
+
+describe("selectWord", () => {
+  it("setzt Phase auf playing", () => {
+    const { roomID, sockets } = setupRoomWithPlayers(2);
+    startGame(roomID, sockets[0], jest.fn());
+    const room = getRoom(roomID)!;
+    selectWord(roomID, room.drawerId!, room.wordChoices![0], jest.fn());
+    expect(getRoom(roomID)!.phase).toBe("playing");
+  });
+
+  it("setzt das gewählte Wort", () => {
+    const { roomID, sockets } = setupRoomWithPlayers(2);
+    startGame(roomID, sockets[0], jest.fn());
+    const room = getRoom(roomID)!;
+    selectWord(roomID, room.drawerId!, "Hund", jest.fn());
+    expect(getRoom(roomID)!.word).toBe("Hund");
+  });
+
+  it("löscht wordChoices nach Auswahl", () => {
+    const { roomID, sockets } = setupRoomWithPlayers(2);
+    startGame(roomID, sockets[0], jest.fn());
+    const room = getRoom(roomID)!;
+    selectWord(roomID, room.drawerId!, room.wordChoices![0], jest.fn());
+    expect(getRoom(roomID)!.wordChoices).toBeNull();
+  });
+
+  it("wirft 403 wenn Nicht-Drawer ein Wort wählt", () => {
+    const { roomID, sockets } = setupRoomWithPlayers(2);
+    startGame(roomID, sockets[0], jest.fn());
+    const room = getRoom(roomID)!;
+    const nonDrawer = sockets.find((s) => s !== room.drawerId)!;
+    expect(() =>
+      selectWord(roomID, nonDrawer, room.wordChoices![0], jest.fn()),
+    ).toThrow(expect.objectContaining({ status: 403 }));
+  });
+
+  it("wirft 400 bei ungültigem Wort", () => {
+    const { roomID, sockets } = setupRoomWithPlayers(2);
+    startGame(roomID, sockets[0], jest.fn());
+    const room = getRoom(roomID)!;
+    expect(() =>
+      selectWord(roomID, room.drawerId!, "UNGÜLTIG", jest.fn()),
+    ).toThrow(expect.objectContaining({ status: 400 }));
+  });
+
+  it("wirft 400 wenn nicht in wordSelection Phase", () => {
+    const { room } = setupStartedGame(); // already in playing
+    expect(() =>
+      selectWord(room.roomID, room.drawerId!, "Katze", jest.fn()),
+    ).toThrow(expect.objectContaining({ status: 400 }));
   });
 });
 
@@ -652,15 +732,22 @@ describe("nextRound", () => {
     expect(nextRound(roomID, jest.fn()).drawerId).not.toBe(firstDrawer);
   });
 
-  it("setzt neues Wort", () => {
+  it("setzt Phase auf wordSelection für nächste Runde", () => {
     const { roomID } = setupStartedGame();
-    expect(nextRound(roomID, jest.fn()).word).toBe("Katze");
+    expect(nextRound(roomID, jest.fn()).phase).toBe("wordSelection");
   });
 
-  it("setzt Phase zurück auf playing", () => {
-    const { roomID, room } = setupStartedGame();
-    endRound(room);
-    expect(nextRound(roomID, jest.fn()).phase).toBe("playing");
+  it("bietet 3 neue Wortoptionen an", () => {
+    const { roomID } = setupStartedGame();
+    const room = nextRound(roomID, jest.fn());
+    expect(room.wordChoices).toHaveLength(3);
+  });
+
+  it("nach selectWord ist Wort gesetzt", () => {
+    const { roomID } = setupStartedGame();
+    const selRoom = nextRound(roomID, jest.fn());
+    selectWord(roomID, selRoom.drawerId!, selRoom.wordChoices![0], jest.fn());
+    expect(getRoom(roomID)!.word).toBe("Katze");
   });
 
   it("setzt guessedPlayerIds zurück", () => {
@@ -703,6 +790,15 @@ describe("getRoomPublic", () => {
 
   it("wordLength ist null in der Lobby", () => {
     expect(getRoomPublic(getRoom(createRoom())!).wordLength).toBeNull();
+  });
+
+  it("enthält currentHint", () => {
+    const { room } = setupStartedGame();
+    expect(getRoomPublic(room).currentHint).toBe("_____");
+  });
+
+  it("currentHint ist null in der Lobby", () => {
+    expect(getRoomPublic(getRoom(createRoom())!).currentHint).toBeNull();
   });
 
   it("timeLeftMs ist gesetzt während playing", () => {

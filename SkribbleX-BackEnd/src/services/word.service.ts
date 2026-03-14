@@ -125,6 +125,33 @@ export class WordService {
     return order;
   }
 
+  /**
+   * Returns n unique random words for the given language/categories.
+   * Falls back to fewer words if pool is too small.
+   */
+  static getRandomWords(
+    n: number,
+    language: Language = "de",
+    categories: string[] = [],
+  ): string[] {
+    this.load();
+    const normalizedCats = categories.map((c) => c.toLowerCase().trim());
+
+    const pool = this.words.filter((w) => {
+      if (w.language !== language) return false;
+      if (normalizedCats.length === 0) return true;
+      return normalizedCats.includes(w.category.toLowerCase().trim());
+    });
+
+    const source = pool.length > 0
+      ? pool
+      : this.words.filter((w) => w.language === language);
+
+    // Shuffle and take n unique
+    const shuffled = [...source].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, Math.min(n, shuffled.length)).map((e) => e.word);
+  }
+
   static getRandomWord(
     language: Language = "de",
     categories: string[] = [],

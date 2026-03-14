@@ -1,7 +1,7 @@
 // src/types/RoomState.ts
 import type { Player } from "./Player";
 
-export type GamePhase = "lobby" | "playing" | "roundEnd" | "gameEnd";
+export type GamePhase = "lobby" | "wordSelection" | "playing" | "roundEnd" | "gameEnd";
 export type Language = "de" | "en";
 
 export interface RoomState {
@@ -10,6 +10,7 @@ export interface RoomState {
   hostId: string | null;
   drawerId: string | null;
   word: string | null;
+  wordChoices: string[] | null;
   round: number;
   maxRounds: number;
   roundDurationMs: number;
@@ -17,6 +18,9 @@ export interface RoomState {
   guessedPlayerIds: Set<string>;
   roundStartedAt: number | null;
   roundTimerHandle: ReturnType<typeof setTimeout> | null;
+  wordSelectionTimerHandle: ReturnType<typeof setTimeout> | null;
+  revealTimerHandles: ReturnType<typeof setTimeout>[];
+  currentHint: string | null;
   language: Language;
   categories: string[];
 }

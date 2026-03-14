@@ -10,11 +10,14 @@ interface UseGameSocketOptions {
   onRoomUpdate: (room: PublicRoom) => void;
   onPlayerJoined: (data: { player: unknown; room: PublicRoom }) => void;
   onPlayerLeft: (data: { socketId: string; room: PublicRoom }) => void;
+  onSelectingWord: (data: { room: PublicRoom }) => void;
+  onWordChoices: (data: { words: string[] }) => void;
   onRoundStarted: (data: { room: PublicRoom }) => void;
   onWordReveal: (data: { word: string }) => void;
   onRoundEnded: (data: { word: string; room: PublicRoom | null }) => void;
   onGameEnded: (data: { players: unknown[] }) => void;
   onLobbyReset: (data: { room: PublicRoom }) => void;
+  onHintUpdate: (data: { hint: string }) => void;
   onError: (msg: string) => void;
 }
 
@@ -55,11 +58,14 @@ export function useGameSocket(opts: UseGameSocketOptions) {
         "lobby:settings-updated",
         (d) => optsRef.current.onRoomUpdate((d as { room: PublicRoom }).room),
       ],
+      ["game:selecting-word", (d) => optsRef.current.onSelectingWord(d as never)],
+      ["game:word-choices", (d) => optsRef.current.onWordChoices(d as never)],
       ["game:round-started", (d) => optsRef.current.onRoundStarted(d as never)],
       ["game:word-reveal", (d) => optsRef.current.onWordReveal(d as never)],
       ["game:round-ended", (d) => optsRef.current.onRoundEnded(d as never)],
       ["game:ended", (d) => optsRef.current.onGameEnded(d as never)],
       ["game:lobby-reset", (d) => optsRef.current.onLobbyReset(d as never)],
+      ["game:hint-update", (d) => optsRef.current.onHintUpdate(d as never)],
     ];
 
     for (const [event, handler] of handlers) {
@@ -104,6 +110,18 @@ export function useGameSocket(opts: UseGameSocketOptions) {
     );
   }, []);
 
+  const selectWord = useCallback((roomID: string, word: string) => {
+    const socket = getSocket();
+    socket.emit(
+      "game:select-word",
+      { roomID, word },
+      (res: { ok: boolean; error?: string }) => {
+        if (!res.ok)
+          optsRef.current.onError(res.error ?? "Could not select word");
+      },
+    );
+  }, []);
+
   const leaveRoom = useCallback((roomID: string) => {
     const socket = getSocket();
     socket.emit("room:leave", { roomID });
@@ -121,5 +139,5 @@ export function useGameSocket(opts: UseGameSocketOptions) {
     );
   }, []);
 
-  return { updateSettings, startGame, leaveRoom, resetToLobby };
+  return { updateSettings, startGame, selectWord, leaveRoom, resetToLobby };
 }

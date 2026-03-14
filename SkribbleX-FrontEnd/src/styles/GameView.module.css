@@ -36,6 +36,22 @@
   color: var(--danger);
 }
 
+/* ── Category badge (shown in player list column) ────────────────────────── */
+.categoryBadge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-muted);
+  text-align: center;
+  word-break: break-word;
+  line-height: 1.4;
+  flex-shrink: 0;
+}
+
 /* ── Canvas column ───────────────────────────────────────────────────────── */
 /*
  * Key fixes:

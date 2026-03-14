@@ -1,6 +1,6 @@
 // src/components/lobby/LobbyView.tsx
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import PlayerCard from "./PlayerCard";
 import type { PublicRoom, DiscordUser, Language } from "@/types/game";
@@ -39,6 +39,11 @@ export default function LobbyView({
   const [lang, setLang] = useState<Language>(room.language);
   const [categories, setCategories] = useState<string[]>(room.categories);
   const [maxRounds, setMaxRounds] = useState<number>(room.maxRounds);
+
+  // Sync local state when the host changes settings (non-hosts receive server updates via room prop)
+  useEffect(() => { setLang(room.language); }, [room.language]);
+  useEffect(() => { setCategories(room.categories); }, [room.categories]);
+  useEffect(() => { setMaxRounds(room.maxRounds); }, [room.maxRounds]);
 
   const canStart = isHost && playerCount >= 2 && categories.length > 0;
 

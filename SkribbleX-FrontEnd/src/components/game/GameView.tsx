@@ -9,6 +9,7 @@ import Toolbar from "./Toolbar";
 import GuessChat, { type ChatMessage } from "./GuessChat";
 import RoundEndOverlay from "./RoundEndOverlay";
 import GameEndScreen from "./GameEndScreen";
+import WordSelectionOverlay from "./WordSelectionOverlay";
 import PlayerCard from "@/components/lobby/PlayerCard";
 import type { PublicRoom, DiscordUser } from "@/types/game";
 import styles from "@/styles/GameView.module.css";
@@ -19,6 +20,9 @@ interface GameViewProps {
   localUser: DiscordUser;
   socketId: string;
   drawerWord: string | null;
+  wordChoices: string[] | null;
+  currentHint: string | null;
+  onSelectWord: (word: string) => void;
   onBackLobby: () => void;
   onLeave: () => void;
 }
@@ -28,6 +32,9 @@ export default function GameView({
   localUser,
   socketId,
   drawerWord,
+  wordChoices,
+  currentHint,
+  onSelectWord,
   onBackLobby,
   onLeave,
 }: GameViewProps) {
@@ -57,10 +64,21 @@ export default function GameView({
   }, [room.phase, room.timeLeftMs]);
   const timeSec = Math.ceil(timeLeft / 1000);
 
-  // Hint for guessers
-  const hint = room.wordLength
-    ? Array.from({ length: room.wordLength }, () => "_").join(" ")
-    : null;
+  // Hint for guessers: prefer server-sent hint (with revealed letters),
+  // fall back to plain underscores based on word length
+  const hint = (() => {
+    if (currentHint) {
+      // Format: display each char with a space between, keep spaces as separators
+      return currentHint
+        .split("")
+        .map((c) => (c === " " ? "   " : c))
+        .join(" ");
+    }
+    if (room.wordLength) {
+      return Array.from({ length: room.wordLength }, () => "_").join(" ");
+    }
+    return null;
+  })();
 
   const addMessage = useCallback((m: Omit<ChatMessage, "id">) => {
     setMessages((prev) => [...prev, { ...m, id: crypto.randomUUID() }]);
@@ -134,6 +152,9 @@ export default function GameView({
     );
   }
 
+  // Active categories label (shown to all players)
+  const categoriesLabel = room.categories.join(", ");
+
   return (
     <div className={pageStyles.gamePage}>
       <div className={pageStyles.gameFrame}>
@@ -144,7 +165,11 @@ export default function GameView({
           </span>
 
           <span className={styles.wordArea}>
-            {isDrawer && drawerWord ? (
+            {room.phase === "wordSelection" ? (
+              <em className={styles.drawingLabel}>
+                {isDrawer ? "Choose a word…" : "Drawer is picking a word…"}
+              </em>
+            ) : isDrawer && drawerWord ? (
               <>
                 <em className={styles.drawingLabel}>Draw: </em>
                 <strong>{drawerWord}</strong>
@@ -155,14 +180,15 @@ export default function GameView({
           </span>
 
           <span
-            className={`${styles.timer} ${timeSec <= 10 ? styles.timerWarn : ""}`}
+            className={`${styles.timer} ${timeSec <= 10 && room.phase === "playing" ? styles.timerWarn : ""}`}
           >
-            {timeSec}s
+            {room.phase === "playing" ? `${timeSec}s` : ""}
           </span>
         </div>
 
         {/* ── Left: players ────────────────────────────────────── */}
         <div className={pageStyles.gamePlayerList}>
+          <div className={styles.categoryBadge}>{categoriesLabel}</div>
           {sorted.map((p) => (
             <PlayerCard
               key={p.playerID}
@@ -178,13 +204,13 @@ export default function GameView({
         <div className={styles.canvasCol}>
           <CanvasBoard
             ref={canvasRef}
-            isDrawer={isDrawer}
+            isDrawer={isDrawer && room.phase === "playing"}
             color={color}
             brushSize={brushSize}
             onStroke={sendStroke}
             onClear={sendClear}
           />
-          {isDrawer && (
+          {isDrawer && room.phase === "playing" && (
             <Toolbar
               color={color}
               brushSize={brushSize}
@@ -207,7 +233,15 @@ export default function GameView({
         </div>
       </div>
 
+      {/* ── Overlays ──────────────────────────────────────────────── */}
       <AnimatePresence>
+        {room.phase === "wordSelection" && isDrawer && wordChoices && (
+          <WordSelectionOverlay
+            key="wordSelection"
+            words={wordChoices}
+            onSelect={onSelectWord}
+          />
+        )}
         {revealWord && (
           <RoundEndOverlay
             key="roundEnd"

@@ -68,10 +68,13 @@ export default function GameView({
 
   // Socket listeners
   useEffect(() => {
-    const onCorrectGuess = (d: { playerName: string }) =>
-      addMessage({ type: "correct", text: `${d.playerName} guessed it! 🎉` });
-    const onPlayerGuessed = (d: { playerName: string }) =>
-      addMessage({ type: "system", text: `${d.playerName} got it!` });
+    const onCorrectGuess = (d: { score: number }) =>
+      addMessage({
+        type: "correct",
+        text: `You guessed it! 🎉 (+${d.score - (localPlayer?.score ?? 0)} pts)`,
+      });
+    const onPlayerGuessed = (d: { name: string }) =>
+      addMessage({ type: "system", text: `${d.name} got it!` });
     const onRoundEnded = (d: { word: string }) => {
       setRevealWord(d.word);
       canvasRef.current?.clear();
@@ -80,8 +83,12 @@ export default function GameView({
       setEndPlayers(d.players);
       setGameEnded(true);
     };
-    const onChatMsg = (d: { sender: string; text: string }) =>
-      addMessage({ type: "chat", sender: d.sender, text: d.text });
+    const onChatMsg = (d: {
+      name?: string;
+      playerID?: string;
+      text: string;
+      type?: string;
+    }) => addMessage({ type: "chat", sender: d.name, text: d.text });
 
     socket.on("game:guess-correct", onCorrectGuess);
     socket.on("game:player-guessed", onPlayerGuessed);

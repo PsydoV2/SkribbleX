@@ -35,11 +35,13 @@ export default function LobbyView({
 }: LobbyViewProps) {
   const isHost = room.hostId === socketId;
   const playerCount = room.players.length;
-  const canStart = isHost && playerCount >= 2;
 
   const [lang, setLang] = useState<Language>(room.language);
   const [categories, setCategories] = useState<string[]>(room.categories);
   const [maxRounds, setMaxRounds] = useState<number>(room.maxRounds);
+
+  const canStart = isHost && playerCount >= 2 && categories.length > 0;
+
   const { showToast } = useToast();
 
   const toggleCategory = (cat: string) => {
@@ -195,7 +197,9 @@ export default function LobbyView({
             >
               {canStart
                 ? "Start Game 🎮"
-                : `Need ${2 - playerCount} more player${2 - playerCount === 1 ? "" : "s"}`}
+                : categories.length === 0
+                  ? "Select at least one category"
+                  : `Need ${2 - playerCount} more player${2 - playerCount === 1 ? "" : "s"}`}
             </motion.button>
           ) : (
             <p className={styles.waitingForHost}>

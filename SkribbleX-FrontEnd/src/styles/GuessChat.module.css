@@ -48,7 +48,7 @@
 .correct {
   margin: 0.25rem 0;
   padding: 0.3rem 0.5rem;
-  background: var(--success);
+  background: var(--successToast);
   color: var(--success);
   font-weight: 700;
   border: 1px solid var(--success);

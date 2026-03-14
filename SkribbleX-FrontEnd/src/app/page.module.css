@@ -197,7 +197,7 @@
   font-size: 0.82rem;
   font-weight: 700;
   color: var(--success);
-  background: var(--success);
+  background: var(--successToast);
   border: 1px solid var(--success);
   padding: 0.4rem 0.9rem;
   border-radius: 2rem;

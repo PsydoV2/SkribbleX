@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/ToastContext";
 import ConnectionStatus from "@/components/ConnectionStatus";
 import SelectMenu from "@/components/SelectMenu";
 import LobbyView from "@/components/lobby/LobbyView";
+import GameView from "@/components/game/GameView";
 import type { DiscordUser, PublicRoom, Language } from "@/types/game";
 import styles from "./game.module.css";
 
@@ -17,7 +18,6 @@ type Screen = "loading" | "select" | "lobby" | "game";
 export default function GamePage() {
   const socket = getSocket();
   const { showToast } = useToast();
-  // Stable ref — effects that close over showToast won't re-run on every render
   const showToastRef = useRef(showToast);
   showToastRef.current = showToast;
 
@@ -26,6 +26,9 @@ export default function GamePage() {
   const [user, setUser] = useState<DiscordUser | null>(null);
   const [room, setRoom] = useState<PublicRoom | null>(null);
   const [socketId, setSocketId] = useState<string>(socket.id ?? "");
+  // word-reveal kommt direkt nach round-started — vor GameView mount
+  // → hier fangen und als Prop weitergeben
+  const [drawerWord, setDrawerWord] = useState<string | null>(null);
 
   // ── Discord identity ────────────────────────────────────────────────────
   useEffect(() => {
@@ -47,24 +50,17 @@ export default function GamePage() {
       setSocketId(socket.id ?? "");
     };
     const onDisconnect = () => setIsConnected(false);
-
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
-
-    // Use the callback — never setState synchronously in the effect body
     if (socket.connected) onConnect();
-
     return () => {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
     };
-    // socket is a stable singleton — [] is intentional
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Game socket events ──────────────────────────────────────────────────
-  // Pass roomID as null until we're actually in a room, so the hook
-  // doesn't try to join before the user has chosen/created one.
+  // ── Game socket ─────────────────────────────────────────────────────────
   const inRoom = screen === "lobby" || screen === "game";
 
   const { updateSettings, startGame, leaveRoom } = useGameSocket({
@@ -74,36 +70,41 @@ export default function GamePage() {
     onPlayerJoined: ({ room: r }) => setRoom(r),
     onPlayerLeft: ({ room: r }) => setRoom(r),
     onRoundStarted: ({ room: r }) => {
+      setDrawerWord(null); // reset for new round
       setRoom(r);
       setScreen("game");
     },
-    onWordReveal: () => {}, // handled inside GameView (next step)
-    onRoundEnded: () => {},
+    // Catch word-reveal HERE — GameView may not be mounted yet
+    onWordReveal: ({ word }) => setDrawerWord(word),
+    onRoundEnded: (d) => {
+      if (d.room) setRoom(d.room); // updated scores from backend
+      setDrawerWord(null);
+    },
     onGameEnded: () => {},
     onError: (msg) => showToastRef.current("error", msg),
   });
 
   // ── Actions ─────────────────────────────────────────────────────────────
+  const emptyRoom = (roomID: string, hostId: string | null): PublicRoom => ({
+    roomID,
+    players: [],
+    hostId,
+    drawerId: null,
+    round: 0,
+    maxRounds: 3,
+    phase: "lobby",
+    wordLength: null,
+    timeLeftMs: null,
+    language: "de",
+    categories: [],
+    availableCategories: [],
+  });
+
   const handleCreateRoom = async () => {
     if (!user) return;
     try {
       const roomID = await socketService.createRoom();
-      // The hook will emit room:join once roomID + user are set.
-      // We pre-populate a minimal room so the lobby renders immediately.
-      setRoom({
-        roomID,
-        players: [],
-        hostId: socketId,
-        drawerId: null,
-        round: 0,
-        maxRounds: 3,
-        phase: "lobby",
-        wordLength: null,
-        timeLeftMs: null,
-        language: "de",
-        categories: [],
-        availableCategories: [],
-      });
+      setRoom(emptyRoom(roomID, socketId));
       setScreen("lobby");
     } catch (err) {
       showToastRef.current(
@@ -115,31 +116,17 @@ export default function GamePage() {
 
   const handleJoinRoom = async (roomID: string) => {
     if (!user) return;
-    setRoom({
-      roomID,
-      players: [],
-      hostId: null,
-      drawerId: null,
-      round: 0,
-      maxRounds: 3,
-      phase: "lobby",
-      wordLength: null,
-      timeLeftMs: null,
-      language: "de",
-      categories: [],
-      availableCategories: [],
-    });
+    setRoom(emptyRoom(roomID, null));
     setScreen("lobby");
-    // useGameSocket will call room:join and fill real room data via onRoomUpdate
   };
 
   const handleLeave = () => {
     if (room) leaveRoom(room.roomID);
     setRoom(null);
+    setDrawerWord(null);
     setScreen("select");
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className={styles.root}>
       <ConnectionStatus isConnected={isConnected} />
@@ -175,11 +162,14 @@ export default function GamePage() {
         />
       )}
 
-      {screen === "game" && room && (
-        <div className={styles.gamePlaceholder}>
-          {/* GameView kommt im nächsten Schritt */}
-          <p>🎮 Round {room.round} – Game is running…</p>
-        </div>
+      {screen === "game" && room && user && (
+        <GameView
+          room={room}
+          localUser={user}
+          socketId={socketId}
+          drawerWord={drawerWord}
+          onGameEnd={handleLeave}
+        />
       )}
     </div>
   );

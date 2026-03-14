@@ -53,33 +53,6 @@ export function registerRoomEvents(io: Server, socket: Socket) {
     handleLeave(io, socket, roomID);
   });
 
-  // ─── lobby:settings ─────────────────────────────────────────────────────────
-  // Host ändert Sprache, Kategorien oder Rundenanzahl
-  // payload: { roomID, language?, categories?, maxRounds? }
-  socket.on(
-    "lobby:settings",
-    ({ roomID, language, categories, maxRounds }, callback) => {
-      try {
-        const room = roomService.updateSettings({
-          roomID,
-          socketId: socket.id,
-          language,
-          categories,
-          maxRounds,
-        });
-
-        // Allen im Raum die neuen Settings broadcasten
-        io.to(roomID).emit("lobby:settings-updated", {
-          room: roomService.getRoomPublic(room),
-        });
-
-        callback?.({ ok: true });
-      } catch (err: any) {
-        callback?.({ ok: false, error: err?.message ?? "Unknown error" });
-      }
-    },
-  );
-
   // ─── disconnect ─────────────────────────────────────────────────────────────
   // socket.rooms ist hier bereits leer – deshalb socketRoomMap nutzen
   socket.on("disconnect", () => {
@@ -215,7 +188,11 @@ function handleRoundEnd(
   word: string,
   isGameEnd: boolean,
 ): void {
-  io.to(roomID).emit("game:round-ended", { word });
+  const room = roomService.getRoom(roomID);
+  io.to(roomID).emit("game:round-ended", {
+    word,
+    room: room ? roomService.getRoomPublic(room) : null,
+  });
 
   if (isGameEnd) {
     const room = roomService.getRoom(roomID);

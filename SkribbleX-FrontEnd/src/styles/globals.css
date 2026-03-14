@@ -24,22 +24,18 @@
   --secondary-dim: color-mix(in srgb, var(--secondary) 15%, transparent);
 
   /* Semantic */
-  --danger: rgb(255, 56, 56, 0.3);
-  --danger-border: hsl(0, 100%, 61%);
-  --warning: rgb(255, 179, 0, 0.3);
-  --warning-border: hsl(42, 100%, 50%);
-  --success: rgba(24, 65, 1, 0.3);
+  --danger: hsl(0, 100%, 61%);
+  --warning: hsl(42, 100%, 50%);
+  --success: rgb(24 65 1 / 0.7);
   --success-border: rgb(45, 124, 0);
-  --info: rgb(46, 203, 255, 0.3);
-  --info-border: hsl(195, 100%, 59%);
+  --info: hsl(195, 100%, 59%);
 
-  /* Layout */
+  /* Layout — game frame */
   --frame-max-w: 1200px;
-  --frame-min-w: 800px;
   --frame-h: 600px;
   --topbar-h: 50px;
-  --col-side: 0.2fr;
-  --col-center: 0.6fr;
+  --col-players: 200px; /* fixed — player list never grows */
+  --col-chat: 220px; /* fixed — chat never grows */
   --panel-pad: 1rem;
   --panel-pad-lg: 1.25rem;
 
@@ -56,10 +52,10 @@
 
   /* Shadows / glows */
   --glow-primary: 0 0 10px 1px var(--primary);
-  --glow-danger: 0 0 10px 1px var(--danger-border);
+  --glow-danger: 0 0 10px 1px var(--danger);
   --glow-success: 0 0 10px 1px var(--success-border);
-  --glow-info: 0 0 10px 1px var(--info-border);
-  --glow-warning: 0 0 10px 1px var(--warning-border);
+  --glow-info: 0 0 10px 1px var(--info);
+  --glow-warning: 0 0 10px 1px var(--warning);
 }
 
 /* ─── Reset ──────────────────────────────────────────────────────────────── */
@@ -124,7 +120,7 @@ button {
 /* Pill toggle button — used in Lobby settings and toolbars */
 .pill {
   padding: 0.3rem 0.75rem;
-  border-radius: var(--radius-sm);
+  border-radius: 2rem;
   font-size: 0.78rem;
   font-weight: 500;
   background: var(--bg-light);

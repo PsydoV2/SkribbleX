@@ -12,7 +12,7 @@ interface UseGameSocketOptions {
   onPlayerLeft: (data: { socketId: string; room: PublicRoom }) => void;
   onRoundStarted: (data: { room: PublicRoom }) => void;
   onWordReveal: (data: { word: string }) => void;
-  onRoundEnded: (data: { word: string }) => void;
+  onRoundEnded: (data: { word: string; room: PublicRoom | null }) => void;
   onGameEnded: (data: { players: unknown[] }) => void;
   onError: (msg: string) => void;
 }

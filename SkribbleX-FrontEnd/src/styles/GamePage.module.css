@@ -9,12 +9,13 @@
   align-items: center;
 
   padding: 2rem;
+  box-sizing: border-box;
 }
 
 .gameFrame {
   width: 100%;
   max-width: var(--frame-max-w);
-  min-width: var(--frame-min-w);
+  /* no min-width — let it shrink gracefully */
   height: var(--frame-h);
 
   border-radius: var(--radius-xl);
@@ -22,8 +23,9 @@
   background-color: var(--bg);
 
   display: grid;
+  /* Fixed side columns — chat/players never grow beyond this */
   grid-template-rows: var(--topbar-h) 1fr;
-  grid-template-columns: var(--col-side) var(--col-center) var(--col-side);
+  grid-template-columns: var(--col-players) 1fr var(--col-chat);
 }
 
 /* ── Top bar ─────────────────────────────────────────────────────────────── */
@@ -40,6 +42,7 @@
   align-items: center;
 
   padding: 0 var(--panel-pad);
+  gap: 1rem;
 }
 
 .gameTopBar .roomID {
@@ -64,12 +67,14 @@
 
   padding: var(--panel-pad);
   overflow-y: auto;
+  /* prevent players panel from shrinking canvas */
+  min-width: 0;
 }
 
 .gameCanvas {
+  /* kept for legacy use — actual canvas is inside .canvasCol in GameView */
   grid-row: 2;
   grid-column: 2;
-
   background-color: white;
   width: 100%;
   height: 100%;
@@ -85,4 +90,7 @@
 
   display: flex;
   flex-direction: column;
+  /* never grow beyond the fixed column width */
+  min-width: 0;
+  overflow: hidden;
 }

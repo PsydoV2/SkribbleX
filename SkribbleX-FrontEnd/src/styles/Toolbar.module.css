@@ -1,0 +1,98 @@
+/* src/styles/Toolbar.module.css */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.75rem;
+  background: var(--bg);
+  border-top: 1px solid var(--border-muted);
+  flex-wrap: wrap;
+}
+
+/* Color swatches */
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 160px;
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition:
+    transform var(--t-fast),
+    border-color var(--t-fast);
+  flex-shrink: 0;
+}
+
+.swatch:hover {
+  transform: scale(1.18);
+}
+
+.swatchActive {
+  border-color: var(--primary);
+  transform: scale(1.18);
+}
+
+/* Divider */
+.divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border-muted);
+  flex-shrink: 0;
+}
+
+/* Brush sizes */
+.sizes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sizeBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--t-fast);
+  border: 1px solid transparent;
+}
+
+.sizeBtn:hover {
+  background: var(--border-muted);
+}
+
+.sizeBtnActive {
+  border-color: var(--primary);
+  background: var(--primary-dim);
+}
+
+.sizeDot {
+  border-radius: 50%;
+  display: block;
+  min-width: 2px;
+  min-height: 2px;
+}
+
+/* Clear */
+.clearBtn {
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-light);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background var(--t-fast);
+  margin-left: auto;
+}
+
+.clearBtn:hover {
+  background: color-mix(in srgb, var(--danger) 20%, var(--bg-light));
+}

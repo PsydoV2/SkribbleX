@@ -36,8 +36,8 @@ app.use(globalRateLimiter);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-const HTTPPORT = Number(process.env.HTTPPORT) || 9080;
-const HTTPSPORT = Number(process.env.HTTPSPORT) || 9444;
+const HTTPPORT = Number(process.env.HTTPPORT) || 8080;
+const HTTPSPORT = Number(process.env.HTTPSPORT) || 8444;
 
 let server: http.Server | https.Server;
 

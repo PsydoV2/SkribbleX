@@ -1,0 +1,16 @@
+/* src/styles/CanvasBoard.module.css */
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  touch-action: none; /* prevent scroll while drawing on touch */
+}
+
+.drawing {
+  cursor: crosshair;
+}
+
+.watching {
+  cursor: default;
+}

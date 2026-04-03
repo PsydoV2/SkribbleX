@@ -9,7 +9,7 @@ let discordSdkInstance: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let discordEvents: any = null; // Wird jetzt dynamisch im init befüllt
 
-/** True when the app is running inside a Discord Activity iframe. */
+/** Prüft zuverlässig via Domain, ob die App im Discord-Iframe läuft */
 export function isInDiscordActivity(): boolean {
   if (typeof window === "undefined") return false;
   return window.location.hostname.endsWith("discordsays.com");
@@ -26,21 +26,38 @@ async function initDiscord(): Promise<DiscordUser> {
     throw new Error("Discord SDK must run in the browser");
   }
 
-  // 1. Parameter-Rettung (frame_id schmuggeln)
+  // 1. Parameter-Rettung: IDs aus dem sessionStorage zurück in die URL schreiben
+  // Das ist nötig, weil das SDK-interne 'patchFetch' diese in window.location.search erwartet.
   const params = new URLSearchParams(window.location.search);
-  if (!params.has("frame_id") && sessionStorage.getItem("discord_frame_id")) {
-    const newUrl = new URL(window.location.href);
-    newUrl.searchParams.set(
-      "frame_id",
-      sessionStorage.getItem("discord_frame_id")!,
+  let updated = false;
+
+  const savedFrameId = sessionStorage.getItem("discord_frame_id");
+  const savedInstanceId = sessionStorage.getItem("discord_instance_id");
+
+  if (!params.has("frame_id") && savedFrameId) {
+    params.set("frame_id", savedFrameId);
+    updated = true;
+  }
+  if (!params.has("instance_id") && savedInstanceId) {
+    params.set("instance_id", savedInstanceId);
+    updated = true;
+  }
+
+  if (updated) {
+    const newUrl = window.location.pathname + "?" + params.toString();
+    window.history.replaceState({}, "", newUrl);
+    console.debug(
+      "[discord] Params restored from sessionStorage for SDK initialization",
     );
-    window.history.replaceState({}, "", newUrl.toString());
   }
 
   const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
 
+  // Validierung: Nur fortfahren, wenn wir wirklich in Discord sind
   if (!clientId || !isInDiscordActivity()) {
-    console.warn("[discord] No Client ID or not in Activity — using mock");
+    console.warn(
+      "[discord] Not in Discord Activity or Client ID missing — using mock",
+    );
     return mockUser();
   }
 
@@ -48,10 +65,10 @@ async function initDiscord(): Promise<DiscordUser> {
     const { DiscordSDK, patchUrlMappings, Events } =
       await import("@discord/embedded-app-sdk");
 
-    // Events global verfügbar machen für Voice-Updates
+    // Events für Voice-Updates speichern
     discordEvents = Events;
 
-    // Mapping VOR SDK-Konstruktor patchen
+    // WICHTIG: Mappings patchen BEVOR die SDK-Instanz erstellt wird
     patchUrlMappings([
       {
         prefix: "/backend",
@@ -70,7 +87,7 @@ async function initDiscord(): Promise<DiscordUser> {
       ),
     ]);
 
-    // Autorisierung
+    // 2. Autorisierung (Code anfordern)
     const { code } = await sdk.commands.authorize({
       client_id: clientId,
       response_type: "code",
@@ -79,7 +96,7 @@ async function initDiscord(): Promise<DiscordUser> {
       scope: ["identify"],
     });
 
-    // Token Exchange
+    // 3. Token Exchange über dein Backend Proxy (/backend/...)
     const tokenRes = await fetch("/backend/api/discord/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -89,9 +106,10 @@ async function initDiscord(): Promise<DiscordUser> {
     if (!tokenRes.ok) throw new Error("Token exchange failed");
     const { access_token } = await tokenRes.json();
 
+    // 4. Authentifizierung
     await sdk.commands.authenticate({ access_token });
 
-    // Benutzerdaten holen
+    // 5. Benutzerdaten von Discord API abrufen
     const userRes = await fetch("https://discord.com/api/users/@me", {
       headers: { Authorization: `Bearer ${access_token}` },
     });
@@ -99,19 +117,22 @@ async function initDiscord(): Promise<DiscordUser> {
     if (!userRes.ok) throw new Error("Failed to fetch Discord user profile");
     const user = await userRes.json();
 
+    console.log("[discord] Authenticated as:", user.username);
+
     return {
       id: user.id,
       username: user.global_name ?? user.username,
       discriminator: user.discriminator || "0",
-      avatar: user.avatar,
+      avatar: user.avatar, // Der Hash für das Profilbild
     };
   } catch (err) {
-    console.error("[discord] SDK initialization failed:", err);
+    console.error("[discord] Initialization failed:", err);
     return mockUser();
   }
 }
 
 export function avatarUrl(userId: string, avatarInput: string | null): string {
+  // Fall A: Gast-User oder DiceBear (URL oder Data-URI)
   if (
     avatarInput?.startsWith("http") ||
     avatarInput?.startsWith("data:image")
@@ -122,12 +143,13 @@ export function avatarUrl(userId: string, avatarInput: string | null): string {
     return avatarInput;
   }
 
+  // Fall B: Echter Discord Avatar (Hash vorhanden)
   if (avatarInput && userId) {
     const ext = avatarInput.startsWith("a_") ? "gif" : "png";
     return `https://cdn.discordapp.com/avatars/${userId}/${avatarInput}.${ext}?size=128`;
   }
 
-  // Korrektur: BigInt Kompatibilität
+  // Fall C: Default Discord Avatar (Modulo-Rechnung mit BigInt für riesige IDs)
   const defaultIdx = userId ? Number(BigInt(userId) % BigInt(5)) : 0;
   return `https://cdn.discordapp.com/embed/avatars/${defaultIdx}.png`;
 }

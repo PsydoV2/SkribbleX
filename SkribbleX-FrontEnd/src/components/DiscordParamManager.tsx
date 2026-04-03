@@ -1,5 +1,4 @@
-"use client"; // Ganz wichtig!
-
+"use client";
 import { useEffect } from "react";
 
 export default function DiscordParamManager() {
@@ -12,9 +11,11 @@ export default function DiscordParamManager() {
       if (frameId) sessionStorage.setItem("discord_frame_id", frameId);
       if (instanceId) sessionStorage.setItem("discord_instance_id", instanceId);
 
-      console.log("[Discord] Params saved to sessionStorage");
+      if (frameId || instanceId) {
+        console.log("[Discord] Params anchored in storage");
+      }
     }
   }, []);
 
-  return null; // Diese Komponente rendert nichts
+  return null;
 }

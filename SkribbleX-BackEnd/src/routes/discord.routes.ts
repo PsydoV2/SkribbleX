@@ -36,6 +36,7 @@ router.post("/discord/token", async (req, res, next) => {
         client_secret: clientSecret,
         grant_type: "authorization_code",
         code,
+        redirect_uri: "https://skribblex.sfalter.de/",
       }),
     });
 

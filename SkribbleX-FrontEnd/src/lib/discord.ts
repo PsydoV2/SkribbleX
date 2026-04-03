@@ -86,7 +86,11 @@ async function initDiscord(): Promise<DiscordUser> {
       state: "",
       prompt: "none",
       scope: ["identify"],
-    });
+      // Wir casten das Objekt zu 'any', damit TS den Fehler ignoriert,
+      // aber die Eigenschaft trotzdem zur Laufzeit gesendet wird.
+      redirect_uri: "https://skribblex.sfalter.de/",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
 
     // 3. Token Exchange über dein Backend Proxy (/backend/...)
     const tokenRes = await fetch("/backend/api/discord/token", {

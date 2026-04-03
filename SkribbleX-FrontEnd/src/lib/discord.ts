@@ -7,13 +7,13 @@ let sdkPromise: Promise<DiscordUser> | null = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let discordSdkInstance: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let discordEvents: any = null;
+const discordEvents: any = null;
 
 /** True when the app is running inside a Discord Activity iframe. */
 export function isInDiscordActivity(): boolean {
   if (typeof window === "undefined") return false;
-  const params = new URLSearchParams(window.location.search);
-  return params.has("instance_id") || params.has("frame_id");
+  // Der Proxy von Discord nutzt immer diese Domain
+  return window.location.hostname.endsWith("discordsays.com");
 }
 
 export function getDiscordUser(): Promise<DiscordUser> {
@@ -29,6 +29,7 @@ async function initDiscord(): Promise<DiscordUser> {
 
   const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
 
+  // 1. Validierung der Umgebung
   if (!clientId) {
     console.warn(
       "[discord] NEXT_PUBLIC_DISCORD_CLIENT_ID not set — using mock",
@@ -36,32 +37,41 @@ async function initDiscord(): Promise<DiscordUser> {
     return mockUser();
   }
 
-  if (!isInDiscordActivity()) {
-    console.warn("[discord] Not inside Discord Activity — using mock");
+  // Nutzt die Domain-Erkennung (hostname endet auf discordsays.com)
+  if (!window.location.hostname.endsWith("discordsays.com")) {
+    console.warn(
+      "[discord] Not inside Discord Activity (Domain check failed) — using mock",
+    );
     return mockUser();
   }
 
   try {
-    const { DiscordSDK, patchUrlMappings, Events } =
+    const { DiscordSDK, patchUrlMappings } =
       await import("@discord/embedded-app-sdk");
+
+    // 2. SDK Instanzieren
     const sdk = new DiscordSDK(clientId);
     discordSdkInstance = sdk;
-    discordEvents = Events;
 
+    // Warten bis das SDK bereit ist (mit Timeout)
     await Promise.race([
       sdk.ready(),
-      timeout(8000, "Discord SDK ready() timed out"),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("SDK ready() timeout")), 8000),
+      ),
     ]);
 
-    // Patch all fetch/WebSocket/XHR calls so they go through Discord's proxy.
-    // The prefix "/backend" must match the URL Mapping in the Developer Portal.
+    // 3. URL Mapping für den Proxy patchen
+    // WICHTIG: Das sorgt dafür, dass fetch("/backend/...") korrekt geroutet wird
     patchUrlMappings([
       {
         prefix: "/backend",
-        target: process.env.NEXT_PUBLIC_BACKEND_HOST ?? "",
+        target:
+          process.env.NEXT_PUBLIC_BACKEND_HOST ?? "api.skribblex.sfalter.de",
       },
     ]);
 
+    // 4. Autorisierung (Code vom Client anfordern)
     const { code } = await sdk.commands.authorize({
       client_id: clientId,
       response_type: "code",
@@ -70,59 +80,73 @@ async function initDiscord(): Promise<DiscordUser> {
       scope: ["identify"],
     });
 
+    // 5. Token Exchange über DEIN Backend
+    // Der Pfad muss in deinem Backend existieren und den 'code' gegen 'access_token' tauschen
     const tokenRes = await fetch("/backend/api/discord/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code }),
     });
 
-    if (!tokenRes.ok) throw new Error("Token exchange failed");
+    if (!tokenRes.ok) {
+      const errorText = await tokenRes.text();
+      console.error("[discord] Token exchange failed:", errorText);
+      throw new Error("Token exchange failed");
+    }
+
     const { access_token } = await tokenRes.json();
 
+    // 6. Authentifizierung im SDK
     await sdk.commands.authenticate({ access_token });
 
+    // 7. Echte Benutzerdaten von der Discord API abrufen
+    // Dank authenticate() weiß Discord, wer wir sind
     const userRes = await fetch("https://discord.com/api/users/@me", {
       headers: { Authorization: `Bearer ${access_token}` },
     });
 
-    if (!userRes.ok) throw new Error("Failed to fetch Discord user");
+    if (!userRes.ok) throw new Error("Failed to fetch Discord user profile");
+
     const user = await userRes.json();
+
+    console.log("[discord] Successfully authenticated:", user.username);
 
     return {
       id: user.id,
       username: user.global_name ?? user.username,
-      discriminator: user.discriminator,
-      avatar: user.avatar,
+      discriminator: user.discriminator || "0",
+      avatar: user.avatar, // Der Hash-String (z.B. "a_123...")
     };
   } catch (err) {
-    console.warn("[discord] SDK init failed, falling back to mock:", err);
-    sdkPromise = null;
+    console.error("[discord] SDK initialization or Auth failed:", err);
+    // Fallback zu Mock, damit die App nicht crashed, falls Discord mal down ist
     return mockUser();
   }
 }
 
-function timeout(ms: number, msg: string): Promise<never> {
-  return new Promise((_, reject) =>
-    setTimeout(() => reject(new Error(msg)), ms),
-  );
-}
-
 export function avatarUrl(userId: string, avatarInput: string | null): string {
-  // Full URL stored directly (browser/guest users using e.g. DiceBear)
-  if (avatarInput?.startsWith("http")) {
-    // DiceBear is blocked by Discord's CSP — fall back to inline SVG when inside Activity
+  // 1. DiceBear / Guest Case (URL beginnt mit http oder data:)
+  if (
+    avatarInput?.startsWith("http") ||
+    avatarInput?.startsWith("data:image")
+  ) {
+    // Falls es noch eine alte DiceBear-URL ist, die von der CSP geblockt wird:
     if (avatarInput.includes("dicebear.com") && isInDiscordActivity()) {
       return inlineSvgAvatar(userId);
     }
     return avatarInput;
   }
-  // Discord avatar hash
-  if (avatarInput) {
+
+  // 2. Echter Discord Avatar (Hash vorhanden)
+  if (avatarInput && userId) {
     const ext = avatarInput.startsWith("a_") ? "gif" : "png";
-    return `https://cdn.discordapp.com/avatars/${userId}/${avatarInput}.${ext}?size=64`;
+    return `https://cdn.discordapp.com/avatars/${userId}/${avatarInput}.${ext}?size=128`;
   }
-  // Default Discord avatar (index based on userId)
-  return `https://cdn.discordapp.com/embed/avatars/${Number(userId) % 5}.png`;
+
+  // 3. Fallback: Default Discord Avatar
+  // Wichtig: userId muss eine valide Zahl (BigInt-String) sein für den Modulo-Check
+  const defaultIdx = userId ? Number(BigInt(userId) % 5n) : 0;
+  return `https://cdn.discordapp.com/embed/avatars/${defaultIdx}.png`;
 }
 
 /** DiceBear pixel-art avatar — used in browser mode (no CSP restrictions). */

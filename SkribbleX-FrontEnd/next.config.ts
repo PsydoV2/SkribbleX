@@ -12,11 +12,6 @@ const nextConfig: NextConfig = {
   },
 
   trailingSlash: true,
-
-  assetPrefix:
-    process.env.NODE_ENV === "production"
-      ? "https://skribblex.sfalter.de"
-      : undefined,
 };
 
 export default nextConfig;

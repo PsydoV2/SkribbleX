@@ -1,4 +1,3 @@
-// src/socket.ts
 import { io, Socket } from "socket.io-client";
 
 let socket: Socket | null = null;
@@ -6,53 +5,61 @@ let socket: Socket | null = null;
 export function getSocket(): Socket {
   if (socket) return socket;
 
-  // Guard against SSR — this function must only run in the browser
+  // Guard against SSR — diese Funktion darf nur im Browser laufen
   if (typeof window === "undefined") {
     throw new Error("getSocket() called during SSR");
   }
 
-  const params = new URLSearchParams(window.location.search);
-  const isDiscordActivity = params.has("instance_id") || params.has("frame_id");
+  /**
+   * Discord Activity Erkennung:
+   * Wenn die App innerhalb des Discord-Proxys läuft, endet der Hostname auf .discordsays.com
+   */
+  const isDiscordActivity =
+    window.location.hostname.endsWith("discordsays.com");
 
   if (isDiscordActivity) {
-    console.debug("In Discord!");
-    // Inside Discord Activity:
-    // Discord's proxy sits at https://{client_id}.discordsays.com and routes
-    // /backend/* → https://sfalter.de:8444/*.
-    // socket.io must use `path: "/backend/socket.io"` so that the Engine.IO
-    // handshake hits /backend/socket.io/... — Discord strips the /backend prefix
-    // and forwards /socket.io/... to the backend.
-    // Using io("origin/backend") would treat /backend as a namespace, causing
-    // the handshake to go to /socket.io/ (no prefix) which the proxy ignores.
-    // WICHTIG: Wir geben KEINE URL an (oder nur window.location.origin).
-    // Wenn wir keine URL angeben, nutzt io() automatisch die aktuelle Domain.
-    // Wir erzwingen die aktuelle Origin (die discordsays.com Domain)
-    // und hängen den Pfad an.
-    const proxyUrl =
-      typeof window !== "undefined" ? window.location.origin : "";
+    console.debug("[Socket] In Discord erkannt via Domain. Nutze Proxy-Pfad.");
 
-    socket = io(proxyUrl, {
+    /**
+     * WICHTIG: Im Discord-Modus MUSS die Verbindung über die aktuelle Origin gehen,
+     * damit die Content Security Policy (CSP) nicht greift.
+     * Der Pfad '/backend/socket.io' muss im Discord Developer Portal
+     * auf dein API-Backend gemappt sein.
+     */
+    socket = io(window.location.origin, {
       path: "/backend/socket.io",
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
-      // WICHTIG: Falls WebSocket weiterhin geblockt wird,
-      // teste es erst NUR mit polling.
+      // Wir erlauben Polling als Fallback, falls WebSockets im Proxy hängen
       transports: ["polling", "websocket"],
     });
   } else {
-    console.debug("Nicht in Discord!");
-    // Plain browser: connect directly to the backend URL.
-    socket = io(
-      process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000",
-      {
-        reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 1000,
-        transports: ["websocket"],
-      },
-    );
+    console.debug("[Socket] Nicht in Discord. Nutze direkte Backend-URL.");
+
+    /**
+     * Normaler Browser-Modus (Lokal oder direkt auf deiner Website).
+     * Hier verbinden wir uns direkt mit der API-Domain.
+     */
+    const backendUrl =
+      process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+
+    socket = io(backendUrl, {
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      transports: ["websocket"],
+    });
   }
+
+  // Debug-Helper für den Verbindungsstatus
+  socket.on("connect", () => {
+    console.debug("[Socket] Verbunden mit ID:", socket?.id);
+  });
+
+  socket.on("connect_error", (err) => {
+    console.debug("[Socket] Verbindungsfehler:", err.message);
+  });
 
   return socket;
 }

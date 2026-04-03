@@ -145,7 +145,7 @@ export function avatarUrl(userId: string, avatarInput: string | null): string {
 
   // 3. Fallback: Default Discord Avatar
   // Wichtig: userId muss eine valide Zahl (BigInt-String) sein für den Modulo-Check
-  const defaultIdx = userId ? Number(BigInt(userId) % 5n) : 0;
+  const defaultIdx = userId ? Number(BigInt(userId) % BigInt(5)) : 0;
   return `https://cdn.discordapp.com/embed/avatars/${defaultIdx}.png`;
 }
 

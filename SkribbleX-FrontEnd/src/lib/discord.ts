@@ -1,5 +1,7 @@
 // src/lib/discord.ts
 import type { DiscordUser } from "@/types/game";
+import { createAvatar } from "@dicebear/core";
+import * as style from "@dicebear/pixel-art";
 
 let sdkPromise: Promise<DiscordUser> | null = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -125,7 +127,14 @@ export function avatarUrl(userId: string, avatarInput: string | null): string {
 
 /** DiceBear pixel-art avatar — used in browser mode (no CSP restrictions). */
 export function guestAvatarUrl(seed: string): string {
-  return `https://api.dicebear.com/9.x/pixel-art/svg?seed=${encodeURIComponent(seed)}`;
+  const avatar = createAvatar(style, {
+    seed,
+    size: 64,
+    randomizeIds: true,
+    skinColor: ["b68655", "cb9e6e", "e0b687", "eac393", "f5cfa0", "ffdbac"],
+  });
+  const svg = avatar.toString();
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 /**
@@ -158,12 +167,16 @@ export async function getVoiceParticipantIds(): Promise<Set<string>> {
   try {
     const channelId = discordSdkInstance.channelId;
     if (!channelId) return new Set();
-    const channel = await discordSdkInstance.commands.getChannel({ channel_id: channelId });
+    const channel = await discordSdkInstance.commands.getChannel({
+      channel_id: channelId,
+    });
     const ids = new Set<string>(
-      (channel?.voice_states ?? []).map(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (vs: any) => vs.user?.id as string,
-      ).filter(Boolean),
+      (channel?.voice_states ?? [])
+        .map(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (vs: any) => vs.user?.id as string,
+        )
+        .filter(Boolean),
     );
     return ids;
   } catch {
@@ -187,15 +200,23 @@ export function subscribeToVoiceUpdates(
       getVoiceParticipantIds().then(onUpdate);
     };
 
-    discordSdkInstance.subscribe(discordEvents.VOICE_STATE_UPDATE, handler, { channel_id: channelId });
+    discordSdkInstance.subscribe(discordEvents.VOICE_STATE_UPDATE, handler, {
+      channel_id: channelId,
+    });
 
     // Initial fetch
     getVoiceParticipantIds().then(onUpdate);
 
     return () => {
       try {
-        discordSdkInstance.unsubscribe(discordEvents.VOICE_STATE_UPDATE, handler, { channel_id: channelId });
-      } catch { /* ignore */ }
+        discordSdkInstance.unsubscribe(
+          discordEvents.VOICE_STATE_UPDATE,
+          handler,
+          { channel_id: channelId },
+        );
+      } catch {
+        /* ignore */
+      }
     };
   } catch {
     return () => {};

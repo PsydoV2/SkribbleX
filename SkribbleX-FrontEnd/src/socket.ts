@@ -22,14 +22,22 @@ export function getSocket(): Socket {
     // handshake hits /backend/socket.io/... — Discord strips the /backend prefix
     // and forwards /socket.io/... to the backend.
     // Using io("origin/backend") would treat /backend as a namespace, causing
-    // the handshake to go to /socket.io/ (no prefix) which the proxy ignores.// WICHTIG: Wir geben KEINE URL an (oder nur window.location.origin).
+    // the handshake to go to /socket.io/ (no prefix) which the proxy ignores.
+    // WICHTIG: Wir geben KEINE URL an (oder nur window.location.origin).
     // Wenn wir keine URL angeben, nutzt io() automatisch die aktuelle Domain.
-    socket = io({
-      path: "/backend/socket.io", // Der Proxy-Pfad aus dem Developer Portal
+    // Wir erzwingen die aktuelle Origin (die discordsays.com Domain)
+    // und hängen den Pfad an.
+    const proxyUrl =
+      typeof window !== "undefined" ? window.location.origin : "";
+
+    socket = io(proxyUrl, {
+      path: "/backend/socket.io",
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
-      transports: ["websocket", "polling"],
+      // WICHTIG: Falls WebSocket weiterhin geblockt wird,
+      // teste es erst NUR mit polling.
+      transports: ["polling", "websocket"],
     });
   } else {
     // Plain browser: connect directly to the backend URL.

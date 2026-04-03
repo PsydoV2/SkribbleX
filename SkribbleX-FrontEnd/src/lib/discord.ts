@@ -22,33 +22,25 @@ export function getDiscordUser(): Promise<DiscordUser> {
 }
 
 async function initDiscord(): Promise<DiscordUser> {
-  if (typeof window === "undefined") {
-    throw new Error("Discord SDK must run in the browser");
-  }
+  if (typeof window === "undefined") return mockUser();
 
-  // 1. Parameter-Rettung: IDs aus dem sessionStorage zurück in die URL schreiben
-  // Das ist nötig, weil das SDK-interne 'patchFetch' diese in window.location.search erwartet.
+  // 1. KOMPLETTE Parameter-Rettung
   const params = new URLSearchParams(window.location.search);
+  const keys = ["frame_id", "instance_id", "platform", "language"];
   let updated = false;
 
-  const savedFrameId = sessionStorage.getItem("discord_frame_id");
-  const savedInstanceId = sessionStorage.getItem("discord_instance_id");
-
-  if (!params.has("frame_id") && savedFrameId) {
-    params.set("frame_id", savedFrameId);
-    updated = true;
-  }
-  if (!params.has("instance_id") && savedInstanceId) {
-    params.set("instance_id", savedInstanceId);
-    updated = true;
-  }
+  keys.forEach((key) => {
+    const savedValue = sessionStorage.getItem(`discord_${key}`);
+    if (!params.has(key) && savedValue) {
+      params.set(key, savedValue);
+      updated = true;
+    }
+  });
 
   if (updated) {
     const newUrl = window.location.pathname + "?" + params.toString();
     window.history.replaceState({}, "", newUrl);
-    console.debug(
-      "[discord] Params restored from sessionStorage for SDK initialization",
-    );
+    console.debug("[discord] All Discord params restored for SDK");
   }
 
   const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;

@@ -5,15 +5,20 @@ export default function DiscordParamManager() {
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const frameId = params.get("frame_id");
-      const instanceId = params.get("instance_id");
 
-      if (frameId) sessionStorage.setItem("discord_frame_id", frameId);
-      if (instanceId) sessionStorage.setItem("discord_instance_id", instanceId);
+      // Liste der wichtigen Discord-Parameter
+      const keys = ["frame_id", "instance_id", "platform", "language"];
 
-      if (frameId || instanceId) {
-        console.log("[Discord] Params anchored in storage");
-      }
+      let found = false;
+      keys.forEach((key) => {
+        const value = params.get(key);
+        if (value) {
+          sessionStorage.setItem(`discord_${key}`, value);
+          found = true;
+        }
+      });
+
+      if (found) console.log("[Discord] All params anchored in storage");
     }
   }, []);
 

@@ -15,6 +15,7 @@ export function getSocket(): Socket {
   const isDiscordActivity = params.has("instance_id") || params.has("frame_id");
 
   if (isDiscordActivity) {
+    console.debug("In Discord!");
     // Inside Discord Activity:
     // Discord's proxy sits at https://{client_id}.discordsays.com and routes
     // /backend/* → https://sfalter.de:8444/*.
@@ -40,6 +41,7 @@ export function getSocket(): Socket {
       transports: ["polling", "websocket"],
     });
   } else {
+    console.debug("Nicht in Discord!");
     // Plain browser: connect directly to the backend URL.
     socket = io(
       process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000",

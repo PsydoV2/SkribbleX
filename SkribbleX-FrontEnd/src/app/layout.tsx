@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
 import { ToastProvider } from "@/hooks/ToastContext";
+import DiscordParamManager from "@/components/DiscordParamManager";
 
 export const metadata: Metadata = {
   title: "SkribbleX",
@@ -17,6 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <DiscordParamManager />
         <ToastProvider>{children}</ToastProvider>
       </body>
     </html>

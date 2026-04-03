@@ -7,12 +7,11 @@ let sdkPromise: Promise<DiscordUser> | null = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let discordSdkInstance: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const discordEvents: any = null;
+let discordEvents: any = null; // Wird jetzt dynamisch im init befüllt
 
 /** True when the app is running inside a Discord Activity iframe. */
 export function isInDiscordActivity(): boolean {
   if (typeof window === "undefined") return false;
-  // Der Proxy von Discord nutzt immer diese Domain
   return window.location.hostname.endsWith("discordsays.com");
 }
 
@@ -27,42 +26,32 @@ async function initDiscord(): Promise<DiscordUser> {
     throw new Error("Discord SDK must run in the browser");
   }
 
-  const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
-
-  // 1. Validierung der Umgebung
-  if (!clientId) {
-    console.warn(
-      "[discord] NEXT_PUBLIC_DISCORD_CLIENT_ID not set — using mock",
+  // 1. Parameter-Rettung (frame_id schmuggeln)
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has("frame_id") && sessionStorage.getItem("discord_frame_id")) {
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set(
+      "frame_id",
+      sessionStorage.getItem("discord_frame_id")!,
     );
-    return mockUser();
+    window.history.replaceState({}, "", newUrl.toString());
   }
 
-  // Nutzt die Domain-Erkennung (hostname endet auf discordsays.com)
-  if (!window.location.hostname.endsWith("discordsays.com")) {
-    console.warn(
-      "[discord] Not inside Discord Activity (Domain check failed) — using mock",
-    );
+  const clientId = process.env.NEXT_PUBLIC_DISCORD_CLIENT_ID;
+
+  if (!clientId || !isInDiscordActivity()) {
+    console.warn("[discord] No Client ID or not in Activity — using mock");
     return mockUser();
   }
 
   try {
-    const { DiscordSDK, patchUrlMappings } =
+    const { DiscordSDK, patchUrlMappings, Events } =
       await import("@discord/embedded-app-sdk");
 
-    // 2. SDK Instanzieren
-    const sdk = new DiscordSDK(clientId);
-    discordSdkInstance = sdk;
+    // Events global verfügbar machen für Voice-Updates
+    discordEvents = Events;
 
-    // Warten bis das SDK bereit ist (mit Timeout)
-    await Promise.race([
-      sdk.ready(),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("SDK ready() timeout")), 8000),
-      ),
-    ]);
-
-    // 3. URL Mapping für den Proxy patchen
-    // WICHTIG: Das sorgt dafür, dass fetch("/backend/...") korrekt geroutet wird
+    // Mapping VOR SDK-Konstruktor patchen
     patchUrlMappings([
       {
         prefix: "/backend",
@@ -71,7 +60,17 @@ async function initDiscord(): Promise<DiscordUser> {
       },
     ]);
 
-    // 4. Autorisierung (Code vom Client anfordern)
+    const sdk = new DiscordSDK(clientId);
+    discordSdkInstance = sdk;
+
+    await Promise.race([
+      sdk.ready(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("SDK ready() timeout")), 8000),
+      ),
+    ]);
+
+    // Autorisierung
     const { code } = await sdk.commands.authorize({
       client_id: clientId,
       response_type: "code",
@@ -80,72 +79,56 @@ async function initDiscord(): Promise<DiscordUser> {
       scope: ["identify"],
     });
 
-    // 5. Token Exchange über DEIN Backend
-    // Der Pfad muss in deinem Backend existieren und den 'code' gegen 'access_token' tauschen
+    // Token Exchange
     const tokenRes = await fetch("/backend/api/discord/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code }),
     });
 
-    if (!tokenRes.ok) {
-      const errorText = await tokenRes.text();
-      console.error("[discord] Token exchange failed:", errorText);
-      throw new Error("Token exchange failed");
-    }
-
+    if (!tokenRes.ok) throw new Error("Token exchange failed");
     const { access_token } = await tokenRes.json();
 
-    // 6. Authentifizierung im SDK
     await sdk.commands.authenticate({ access_token });
 
-    // 7. Echte Benutzerdaten von der Discord API abrufen
-    // Dank authenticate() weiß Discord, wer wir sind
+    // Benutzerdaten holen
     const userRes = await fetch("https://discord.com/api/users/@me", {
       headers: { Authorization: `Bearer ${access_token}` },
     });
 
     if (!userRes.ok) throw new Error("Failed to fetch Discord user profile");
-
     const user = await userRes.json();
-
-    console.log("[discord] Successfully authenticated:", user.username);
 
     return {
       id: user.id,
       username: user.global_name ?? user.username,
       discriminator: user.discriminator || "0",
-      avatar: user.avatar, // Der Hash-String (z.B. "a_123...")
+      avatar: user.avatar,
     };
   } catch (err) {
-    console.error("[discord] SDK initialization or Auth failed:", err);
-    // Fallback zu Mock, damit die App nicht crashed, falls Discord mal down ist
+    console.error("[discord] SDK initialization failed:", err);
     return mockUser();
   }
 }
 
 export function avatarUrl(userId: string, avatarInput: string | null): string {
-  // 1. DiceBear / Guest Case (URL beginnt mit http oder data:)
   if (
     avatarInput?.startsWith("http") ||
     avatarInput?.startsWith("data:image")
   ) {
-    // Falls es noch eine alte DiceBear-URL ist, die von der CSP geblockt wird:
     if (avatarInput.includes("dicebear.com") && isInDiscordActivity()) {
       return inlineSvgAvatar(userId);
     }
     return avatarInput;
   }
 
-  // 2. Echter Discord Avatar (Hash vorhanden)
   if (avatarInput && userId) {
     const ext = avatarInput.startsWith("a_") ? "gif" : "png";
     return `https://cdn.discordapp.com/avatars/${userId}/${avatarInput}.${ext}?size=128`;
   }
 
-  // 3. Fallback: Default Discord Avatar
-  // Wichtig: userId muss eine valide Zahl (BigInt-String) sein für den Modulo-Check
-  const defaultIdx = userId ? Number(BigInt(userId) % 5n) : 0;
+  // Korrektur: BigInt Kompatibilität
+  const defaultIdx = userId ? Number(BigInt(userId) % BigInt(5)) : 0;
   return `https://cdn.discordapp.com/embed/avatars/${defaultIdx}.png`;
 }
 

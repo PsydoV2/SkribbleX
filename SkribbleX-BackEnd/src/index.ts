@@ -66,7 +66,7 @@ const HTTPPORT: number = parseInt(process.env.HTTPPORT || "8444", 10);
 let server: http.Server | https.Server;
 
 server = http.createServer(app);
-server.listen(HTTPPORT, () => {
+server.listen(HTTPPORT, "127.0.0.1", () => {
   console.log(`🚀 HTTP running on ${HTTPPORT}`);
 });
 

@@ -91,7 +91,7 @@ const startServer = async () => {
   app.use(globalRateLimiter);
 
   // --- REST-Routen ---
-  app.use("/api", systemRoutes);
+  app.use("/api/system", systemRoutes);
   app.use("/api", discordRoutes);
 
   // Fallbacks

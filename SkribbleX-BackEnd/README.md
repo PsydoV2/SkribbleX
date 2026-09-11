@@ -24,37 +24,98 @@ The SkribbleX backend manages all real-time game logic entirely in memory — no
 
 ## Project Structure
 
+File naming, logging, and the `/api/health` route follow the same conventions as [PsydoV2/TypescriptExpressTemplate](https://github.com/PsydoV2/TypescriptExpressTemplate), so this backend looks and feels consistent with the other Psydo backends.
+
 ```
 SkribbleX-BackEnd/
 ├── data/
-│   └── words.json              # DE + EN, 8 categories, 50-70 words each
+│   └── words.json                     # DE + EN, 8 categories, 50-70 words each
 ├── src/
-│   ├── index.ts                # Entry point — HTTP/HTTPS server + Socket.io init
+│   ├── index.ts                       # Entry point — HTTP server + Socket.io init
+│   ├── config/
+│   │   └── socket.config.ts           # Socket.io setup (initSocket, getIO)
+│   ├── controllers/
+│   │   ├── discord.controller.ts      # Request/response handling for /api/discord/*
+│   │   └── system.controller.ts       # Request/response handling for /api/health
 │   ├── events/
-│   │   └── room.events.ts      # All Socket.io event handlers
-│   ├── services/
-│   │   ├── room.service.ts     # In-memory game logic
-│   │   └── word.service.ts     # Loads words.json, getRandomWords()
-│   ├── types/
-│   │   ├── RoomState.ts        # GamePhase, Player, StrokePoint
-│   │   └── Player.ts
+│   │   └── room.events.ts             # All Socket.io event handlers
+│   ├── helper/
+│   │   └── log.helper.ts              # File + console logging by severity
 │   ├── middlewares/
-│   │   ├── error.middleware.ts
-│   │   └── globalRateLimiter.middleware.ts
+│   │   ├── correlationId.middleware.ts    # Assigns/propagates x-request-id
+│   │   ├── requestLogger.middleware.ts    # Logs every request/response
+│   │   ├── rateLimiter.middleware.ts
+│   │   ├── errorHandler.middleware.ts
+│   │   └── notFoundHandler.middleware.ts
+│   ├── routes/
+│   │   ├── discord.routes.ts
+│   │   └── system.routes.ts           # GET /health
+│   ├── services/
+│   │   ├── room.service.ts            # In-memory game logic
+│   │   ├── word.service.ts            # Loads words.json, getRandomWords()
+│   │   └── system.service.ts          # Health check aggregation
+│   ├── types/
+│   │   ├── RoomState.ts               # GamePhase, Player, StrokePoint
+│   │   ├── Player.ts
+│   │   └── DTOSystemHealth.ts
 │   └── utils/
-│       ├── HTTPCodes.ts
-│       ├── EnvValidator.ts
-│       └── LogHelper.ts
+│       ├── httpCodes.util.ts
+│       ├── envValidator.util.ts
+│       └── requestContext.util.ts     # AsyncLocalStorage for request IDs
 ├── tests/
 │   ├── __mocks__/
-│   │   └── nanoid.ts           # CJS-compatible mock (nanoid v5 is ESM-only)
-│   ├── room.service.test.ts    # 103 tests
-│   ├── room.events.test.ts     # 38 tests
-│   └── word.service.test.ts    # 15 tests
+│   │   └── nanoid.ts                  # CJS-compatible mock (nanoid v5 is ESM-only)
+│   ├── room.service.test.ts           # 103 tests
+│   ├── room.events.test.ts            # 38 tests
+│   ├── word.service.test.ts           # 15 tests
+│   └── system.service.test.ts         # 2 tests
 ├── jest.config.ts
 ├── tsconfig.json
 └── package.json
 ```
+
+**File naming convention:** `<name>.<layer>.ts` (e.g. `system.controller.ts`, `rateLimiter.middleware.ts`, `httpCodes.util.ts`); type-only files use `PascalCase.ts` (e.g. `RoomState.ts`, `DTOSystemHealth.ts`).
+
+---
+
+## Logging
+
+`LogHelper` (`src/helper/log.helper.ts`) writes logs by severity (`INFO`, `REQUEST`, `WARNING`, `ERROR`, `CRITICAL`) to `logs/<date>/<severity>.log` — one subdirectory per day, one file per severity — and mirrors every line to the console (`console.info`/`warn`/`error`/`log` depending on severity) so process managers like PM2 pick it up too. The base directory is `LOG_DIR` if set and writable, otherwise a local default (`src/../logs`).
+
+Every request gets a correlation ID (`x-request-id`, taken from the incoming header or generated as a UUID), propagated automatically through the async call chain via `AsyncLocalStorage` (`requestContext.util.ts`) and attached to every log line written while handling that request:
+
+```
+2026-08-15T10:23:11.042Z | REQUEST | a3f1b2c4-... | ip=203.0.113.5 | identity=anonymous | /api/discord/token | status=200 | {"code":"[REDACTED]"}
+```
+
+Sensitive fields (`password`, `token`, `secret`, `authorization`, `code`) are redacted before a request body is logged.
+
+---
+
+## API Routes
+
+| Method | Route                | Description                            |
+| ------ | --------------------- | --------------------------------------- |
+| `GET`  | `/api/health`          | System health check (Socket.io, rooms)  |
+| `POST` | `/api/discord/token`   | Exchanges a Discord OAuth2 code for a token |
+
+`GET /api/health` response shape:
+
+```json
+{
+  "status": "UP",
+  "timestamp": "2026-08-15T10:23:11.042Z",
+  "uptimeSeconds": 3600,
+  "services": {
+    "socket": "healthy"
+  },
+  "rooms": {
+    "active": 4
+  }
+}
+```
+
+Responds `200` when `status` is `"UP"`, `503` when it's `"DOWN"` — so a plain uptime monitor (e.g. Uptime Kuma's default HTTP(s) monitor, which only looks at the status code) detects an outage without needing keyword matching on the body.
 
 ---
 
@@ -83,6 +144,9 @@ Create a `.env` file in the project root:
 NODE_ENV=localhost
 HTTPPORT=4000
 HTTPSPORT=9444
+DISCORD_CLIENT_ID=
+DISCORD_CLIENT_SECRET=
+LOG_DIR=          # optional — defaults to src/../logs if unset or not writable
 ```
 
 For production (`NODE_ENV=production`), the server expects SSL certificate files in the project root:

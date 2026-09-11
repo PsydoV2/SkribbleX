@@ -1,4 +1,4 @@
-import { LogHelper, LogSeverity } from "./LogHelper";
+import { LogHelper, LogSeverity } from "../helper/log.helper";
 
 /**
  * Utility class for validating environment variables.

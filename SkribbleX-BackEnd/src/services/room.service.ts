@@ -50,6 +50,12 @@ export function getRoom(roomID: string): RoomState | undefined {
   return rooms.get(roomID);
 }
 
+// ─── Aktive Räume zählen ──────────────────────────────────────────────────────
+
+export function getActiveRoomCount(): number {
+  return rooms.size;
+}
+
 // ─── Spieler beitreten ────────────────────────────────────────────────────────
 
 export function joinRoom(payload: {

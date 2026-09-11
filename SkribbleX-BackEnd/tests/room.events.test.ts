@@ -5,7 +5,7 @@ import * as roomService from "../src/services/room.service";
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 jest.mock("../src/services/room.service");
-jest.mock("../src/utils/LogHelper", () => ({
+jest.mock("../src/helper/log.helper", () => ({
   LogHelper: { logInfo: jest.fn() },
 }));
 

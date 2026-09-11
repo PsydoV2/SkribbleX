@@ -2,7 +2,7 @@
 import type { Server, Socket } from "socket.io";
 import * as roomService from "../services/room.service";
 import type { RoomState } from "../types/RoomState";
-import { LogHelper } from "../utils/LogHelper";
+import { LogHelper } from "../helper/log.helper";
 
 const ROUND_END_DELAY_MS = 5_000;
 

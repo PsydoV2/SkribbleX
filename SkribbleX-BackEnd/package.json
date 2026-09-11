@@ -4,13 +4,17 @@
   "description": "SkribbleX – Discord Activity Backend",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "cross-env NODE_ENV=localhost ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev": "cross-env NODE_ENV=development ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc && copyfiles -u 0 data/**/* dist/",
     "start": "node dist/src/index.js",
-    "start:local": "npm run build && cross-env NODE_ENV=localhost node dist/src/index.js",
+    "start:local": "npm run build && cross-env NODE_ENV=development node dist/src/index.js",
     "start:prod": "npm run build && cross-env NODE_ENV=production node dist/src/index.js",
     "test": "jest --detectOpenHandles",
-    "test:watch": "jest --watchAll --detectOpenHandles"
+    "test:watch": "jest --watchAll --detectOpenHandles",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "author": "",
   "license": "ISC",
@@ -23,20 +27,30 @@
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.1.0",
     "nanoid": "^5.1.6",
-    "socket.io": "^4.8.1"
+    "node-cron": "^4.6.0",
+    "socket.io": "^4.8.1",
+    "tar": "^7.5.22",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/body-parser": "^1.19.6",
     "@types/cors": "^2.8.13",
     "@types/express": "^4.17.23",
     "@types/jest": "^29.0.0",
     "@types/node": "20.14.12",
+    "@types/node-cron": "^3.0.11",
     "copyfiles": "^2.4.1",
     "cross-env": "^10.0.0",
+    "eslint": "^10.6.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.7.0",
     "jest": "^29.0.0",
+    "prettier": "^3.9.4",
     "ts-jest": "^29.0.0",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.62.1"
   }
 }

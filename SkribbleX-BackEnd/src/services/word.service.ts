@@ -151,14 +151,12 @@ export class WordService {
       pool.length >= n
         ? pool
         : this.words.filter(
-            (w) =>
-              w.language === language &&
-              !excluded.has(w.word.toLowerCase()),
-          ).length >= n
+              (w) =>
+                w.language === language && !excluded.has(w.word.toLowerCase()),
+            ).length >= n
           ? this.words.filter(
               (w) =>
-                w.language === language &&
-                !excluded.has(w.word.toLowerCase()),
+                w.language === language && !excluded.has(w.word.toLowerCase()),
             )
           : this.words.filter((w) => w.language === language);
 

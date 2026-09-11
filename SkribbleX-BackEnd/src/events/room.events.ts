@@ -2,9 +2,22 @@
 import type { Server, Socket } from "socket.io";
 import * as roomService from "../services/room.service";
 import type { RoomState } from "../types/RoomState";
-import { LogHelper } from "../utils/LogHelper";
+import { LogHelper } from "../helper/log.helper";
 
 const ROUND_END_DELAY_MS = 5_000;
+
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    "message" in err &&
+    typeof (err as { message?: unknown }).message === "string"
+  ) {
+    return (err as { message: string }).message;
+  }
+  return String(err);
+}
 
 // ─── Socket→Room Mapping ──────────────────────────────────────────────────────
 // Hält fest in welchem Raum jeder Socket gerade ist.
@@ -17,9 +30,9 @@ export function registerRoomEvents(io: Server, socket: Socket) {
     try {
       const roomID = roomService.createRoom();
       callback?.({ ok: true, roomID });
-    } catch (err: any) {
-      LogHelper.logInfo("room:create", err?.message ?? String(err));
-      callback?.({ ok: false, error: err?.message ?? "Unknown error" });
+    } catch (err: unknown) {
+      LogHelper.logInfo("room:create", errorMessage(err));
+      callback?.({ ok: false, error: errorMessage(err) });
     }
   });
 
@@ -38,7 +51,11 @@ export function registerRoomEvents(io: Server, socket: Socket) {
       socket.join(roomID);
       socketRoomMap.set(socket.id, roomID);
 
-      callback?.({ ok: true, room: roomService.getRoomPublic(room), reconnected });
+      callback?.({
+        ok: true,
+        room: roomService.getRoomPublic(room),
+        reconnected,
+      });
 
       if (reconnected) {
         // Inform others that the player is back
@@ -52,8 +69,8 @@ export function registerRoomEvents(io: Server, socket: Socket) {
           room: roomService.getRoomPublic(room),
         });
       }
-    } catch (err: any) {
-      callback?.({ ok: false, error: err?.message ?? "Unknown error" });
+    } catch (err: unknown) {
+      callback?.({ ok: false, error: errorMessage(err) });
     }
   });
 
@@ -72,8 +89,8 @@ export function registerRoomEvents(io: Server, socket: Socket) {
       });
 
       callback?.({ ok: true });
-    } catch (err: any) {
-      callback?.({ ok: false, error: err?.message ?? "Unknown error" });
+    } catch (err: unknown) {
+      callback?.({ ok: false, error: errorMessage(err) });
     }
   });
 
@@ -105,8 +122,8 @@ export function registerRoomEvents(io: Server, socket: Socket) {
           room: roomService.getRoomPublic(room),
         });
         callback?.({ ok: true });
-      } catch (err: any) {
-        callback?.({ ok: false, error: err?.message ?? "Unknown error" });
+      } catch (err: unknown) {
+        callback?.({ ok: false, error: errorMessage(err) });
       }
     },
   );
@@ -119,8 +136,8 @@ export function registerRoomEvents(io: Server, socket: Socket) {
         room: roomService.getRoomPublic(room),
       });
       callback?.({ ok: true });
-    } catch (err: any) {
-      callback?.({ ok: false, error: err?.message ?? "Unknown error" });
+    } catch (err: unknown) {
+      callback?.({ ok: false, error: errorMessage(err) });
     }
   });
 
@@ -145,8 +162,8 @@ export function registerRoomEvents(io: Server, socket: Socket) {
       });
 
       callback?.({ ok: true });
-    } catch (err: any) {
-      callback?.({ ok: false, error: err?.message ?? "Unknown error" });
+    } catch (err: unknown) {
+      callback?.({ ok: false, error: errorMessage(err) });
     }
   });
 
@@ -173,8 +190,8 @@ export function registerRoomEvents(io: Server, socket: Socket) {
       scheduleHintReveals(io, room);
 
       callback?.({ ok: true });
-    } catch (err: any) {
-      callback?.({ ok: false, error: err?.message ?? "Unknown error" });
+    } catch (err: unknown) {
+      callback?.({ ok: false, error: errorMessage(err) });
     }
   });
 
@@ -217,14 +234,17 @@ export function registerRoomEvents(io: Server, socket: Socket) {
 
         // "Fast richtig!" — wenn der Tipp nur 1-2 Buchstaben entfernt ist
         const word = room.word ?? "";
-        if (word && levenshtein(guess.trim().toLowerCase(), word.toLowerCase()) <= 2) {
+        if (
+          word &&
+          levenshtein(guess.trim().toLowerCase(), word.toLowerCase()) <= 2
+        ) {
           socket.emit("game:guess-warm");
         }
       }
 
       callback?.({ ok: true, result });
-    } catch (err: any) {
-      callback?.({ ok: false, error: err?.message ?? "Unknown error" });
+    } catch (err: unknown) {
+      callback?.({ ok: false, error: errorMessage(err) });
     }
   });
 
@@ -375,7 +395,9 @@ function handleRoundEnd(
 
 function levenshtein(a: string, b: string): number {
   const dp: number[][] = Array.from({ length: a.length + 1 }, (_, i) =>
-    Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
+    Array.from({ length: b.length + 1 }, (_, j) =>
+      i === 0 ? j : j === 0 ? i : 0,
+    ),
   );
   for (let i = 1; i <= a.length; i++) {
     for (let j = 1; j <= b.length; j++) {
@@ -392,7 +414,7 @@ function levenshtein(a: string, b: string): number {
 
 function scheduleHintReveals(io: Server, room: RoomState): void {
   // Buchstaben werden bei 30%, 55% und 75% der Rundenzeit aufgedeckt
-  const revealRatios = [0.30, 0.55, 0.75];
+  const revealRatios = [0.3, 0.55, 0.75];
 
   for (const ratio of revealRatios) {
     const delay = Math.round(ratio * room.roundDurationMs);

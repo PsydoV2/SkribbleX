@@ -3,6 +3,9 @@ import { customAlphabet } from "nanoid";
 import type { RoomState, Language } from "../types/RoomState";
 import type { Player } from "../types/Player";
 import { WordService } from "./word.service";
+import { ApiError } from "../utils/apiError.util";
+import { ErrorCode } from "../utils/errorCodes.util";
+import { HTTPCodes } from "../utils/httpCodes.util";
 
 const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const nano = customAlphabet(alphabet, 6);
@@ -11,6 +14,14 @@ const ROUND_DURATION_MS = 80_000;
 const WORD_SELECTION_TIMEOUT_MS = 15_000;
 
 const rooms = new Map<string, RoomState>();
+
+function roomNotFound(): ApiError {
+  return new ApiError(
+    HTTPCodes.NotFound,
+    ErrorCode.ROOM_NOT_FOUND,
+    "Room not found",
+  );
+}
 
 // ─── Room erstellen ───────────────────────────────────────────────────────────
 
@@ -50,6 +61,12 @@ export function getRoom(roomID: string): RoomState | undefined {
   return rooms.get(roomID);
 }
 
+// ─── Aktive Räume zählen ──────────────────────────────────────────────────────
+
+export function getActiveRoomCount(): number {
+  return rooms.size;
+}
+
 // ─── Spieler beitreten ────────────────────────────────────────────────────────
 
 export function joinRoom(payload: {
@@ -60,7 +77,7 @@ export function joinRoom(payload: {
   avatar?: string | null;
 }): { room: RoomState; reconnected: boolean } {
   const room = rooms.get(payload.roomID);
-  if (!room) throw { status: 404, message: "Room not found" };
+  if (!room) throw roomNotFound();
 
   // Check if player is reconnecting (same playerID, different socketId)
   const existingEntry = Object.entries(room.players).find(
@@ -80,7 +97,11 @@ export function joinRoom(payload: {
   }
 
   if (room.phase !== "lobby")
-    throw { status: 400, message: "Game already started" };
+    throw new ApiError(
+      HTTPCodes.BadRequest,
+      ErrorCode.INVALID_GAME_PHASE,
+      "Game already started",
+    );
 
   const player: Player = {
     playerID: payload.playerID,
@@ -106,15 +127,31 @@ export function kickPlayer(
   targetSocketId: string,
 ): RoomState {
   const room = rooms.get(roomID);
-  if (!room) throw { status: 404, message: "Room not found" };
+  if (!room) throw roomNotFound();
   if (room.hostId !== hostSocketId)
-    throw { status: 403, message: "Only the host can kick players" };
+    throw new ApiError(
+      HTTPCodes.Forbidden,
+      ErrorCode.FORBIDDEN,
+      "Only the host can kick players",
+    );
   if (room.phase !== "lobby")
-    throw { status: 400, message: "Can only kick in lobby" };
+    throw new ApiError(
+      HTTPCodes.BadRequest,
+      ErrorCode.INVALID_GAME_PHASE,
+      "Can only kick in lobby",
+    );
   if (!room.players[targetSocketId])
-    throw { status: 404, message: "Player not found" };
+    throw new ApiError(
+      HTTPCodes.NotFound,
+      ErrorCode.PLAYER_NOT_FOUND,
+      "Player not found",
+    );
   if (targetSocketId === hostSocketId)
-    throw { status: 400, message: "Cannot kick yourself" };
+    throw new ApiError(
+      HTTPCodes.BadRequest,
+      ErrorCode.CANNOT_KICK_SELF,
+      "Cannot kick yourself",
+    );
 
   delete room.players[targetSocketId];
   console.debug(`[room] Host kicked socket ${targetSocketId} from ${roomID}`);
@@ -157,11 +194,19 @@ export function updateSettings(
   },
 ): RoomState {
   const room = rooms.get(roomID);
-  if (!room) throw { status: 404, message: "Room not found" };
+  if (!room) throw roomNotFound();
   if (room.hostId !== socketId)
-    throw { status: 403, message: "Only the host can change settings" };
+    throw new ApiError(
+      HTTPCodes.Forbidden,
+      ErrorCode.FORBIDDEN,
+      "Only the host can change settings",
+    );
   if (room.phase !== "lobby")
-    throw { status: 400, message: "Game already started" };
+    throw new ApiError(
+      HTTPCodes.BadRequest,
+      ErrorCode.INVALID_GAME_PHASE,
+      "Game already started",
+    );
 
   if (patch.language !== undefined) {
     room.language = patch.language;
@@ -171,12 +216,20 @@ export function updateSettings(
     const validCats = WordService.getCategories(room.language);
     const filtered = patch.categories.filter((c) => validCats.includes(c));
     if (filtered.length === 0)
-      throw { status: 400, message: "At least one valid category required" };
+      throw new ApiError(
+        HTTPCodes.BadRequest,
+        ErrorCode.INVALID_CATEGORIES,
+        "At least one valid category required",
+      );
     room.categories = filtered;
   }
   if (patch.maxRounds !== undefined) {
     if (patch.maxRounds < 1 || patch.maxRounds > 10)
-      throw { status: 400, message: "maxRounds must be between 1 and 10" };
+      throw new ApiError(
+        HTTPCodes.BadRequest,
+        ErrorCode.INVALID_MAX_ROUNDS,
+        "maxRounds must be between 1 and 10",
+      );
     room.maxRounds = patch.maxRounds;
   }
 
@@ -200,13 +253,25 @@ export function startGame(
   onRoundPlaying: OnRoundPlayingCallback = () => {},
 ): RoomState {
   const room = rooms.get(roomID);
-  if (!room) throw { status: 404, message: "Room not found" };
+  if (!room) throw roomNotFound();
   if (room.hostId !== socketId)
-    throw { status: 403, message: "Only the host can start the game" };
+    throw new ApiError(
+      HTTPCodes.Forbidden,
+      ErrorCode.FORBIDDEN,
+      "Only the host can start the game",
+    );
   if (Object.keys(room.players).length < 2)
-    throw { status: 400, message: "Need at least 2 players" };
+    throw new ApiError(
+      HTTPCodes.BadRequest,
+      ErrorCode.NOT_ENOUGH_PLAYERS,
+      "Need at least 2 players",
+    );
   if (room.phase !== "lobby")
-    throw { status: 400, message: "Game already started" };
+    throw new ApiError(
+      HTTPCodes.BadRequest,
+      ErrorCode.INVALID_GAME_PHASE,
+      "Game already started",
+    );
 
   return startNextRound(room, onRoundEnd, onRoundPlaying);
 }
@@ -220,13 +285,25 @@ export function selectWord(
   onRoundEnd: RoundEndCallback,
 ): RoomState {
   const room = rooms.get(roomID);
-  if (!room) throw { status: 404, message: "Room not found" };
+  if (!room) throw roomNotFound();
   if (room.phase !== "wordSelection")
-    throw { status: 400, message: "Not in word selection phase" };
+    throw new ApiError(
+      HTTPCodes.BadRequest,
+      ErrorCode.INVALID_GAME_PHASE,
+      "Not in word selection phase",
+    );
   if (room.drawerId !== socketId)
-    throw { status: 403, message: "Only the drawer can select a word" };
+    throw new ApiError(
+      HTTPCodes.Forbidden,
+      ErrorCode.FORBIDDEN,
+      "Only the drawer can select a word",
+    );
   if (!room.wordChoices?.includes(word))
-    throw { status: 400, message: "Invalid word choice" };
+    throw new ApiError(
+      HTTPCodes.BadRequest,
+      ErrorCode.INVALID_WORD_CHOICE,
+      "Invalid word choice",
+    );
 
   // Cancel auto-selection timer
   if (room.wordSelectionTimerHandle) {
@@ -251,7 +328,12 @@ function startNextRound(
   room.round += 1;
   room.phase = "wordSelection";
   room.word = null;
-  room.wordChoices = WordService.getRandomWords(3, room.language, room.categories, room.usedWords);
+  room.wordChoices = WordService.getRandomWords(
+    3,
+    room.language,
+    room.categories,
+    room.usedWords,
+  );
   room.currentHint = null;
   room.guessedPlayerIds = new Set();
   room.roundStartedAt = null;
@@ -319,9 +401,13 @@ export function processGuess(payload: {
   guess: string;
 }): { result: GuessResult; room: RoomState; roundOver: boolean } {
   const room = rooms.get(payload.roomID);
-  if (!room) throw { status: 404, message: "Room not found" };
+  if (!room) throw roomNotFound();
   if (room.phase !== "playing")
-    throw { status: 400, message: "Game is not running" };
+    throw new ApiError(
+      HTTPCodes.BadRequest,
+      ErrorCode.INVALID_GAME_PHASE,
+      "Game is not running",
+    );
 
   if (room.drawerId === payload.socketId)
     return { result: "drawer", room, roundOver: false };
@@ -368,7 +454,7 @@ export function nextRound(
   onRoundPlaying: OnRoundPlayingCallback = () => {},
 ): RoomState {
   const room = rooms.get(roomID);
-  if (!room) throw { status: 404, message: "Room not found" };
+  if (!room) throw roomNotFound();
   return startNextRound(room, onRoundEnd, onRoundPlaying);
 }
 
@@ -376,9 +462,13 @@ export function nextRound(
 
 export function resetToLobby(roomID: string, requesterId: string): RoomState {
   const room = rooms.get(roomID);
-  if (!room) throw { status: 404, message: "Room not found" };
+  if (!room) throw roomNotFound();
   if (room.hostId !== requesterId)
-    throw { status: 403, message: "Only the host can reset" };
+    throw new ApiError(
+      HTTPCodes.Forbidden,
+      ErrorCode.FORBIDDEN,
+      "Only the host can reset",
+    );
 
   clearAllTimers(room);
 

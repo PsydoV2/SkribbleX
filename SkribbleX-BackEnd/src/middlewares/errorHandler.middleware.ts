@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { LogHelper, LogSeverity } from "../helper/log.helper";
 import { HTTPCodes } from "../utils/httpCodes.util";
+import { ApiError } from "../utils/apiError.util";
+import { ErrorCode } from "../utils/errorCodes.util";
 
 export async function errorHandler(
   err: unknown,
@@ -9,25 +11,20 @@ export async function errorHandler(
   _next: NextFunction,
 ) {
   const route = req.originalUrl || req.url;
-  const status =
-    err && typeof (err as { status?: unknown }).status === "number"
-      ? (err as { status: number }).status
-      : HTTPCodes.InternalServerError;
 
-  // A "normal" 4xx (bad request, not found, forbidden, ...) is expected
-  // application behavior; anything else is unexpected and worth flagging.
   const severity =
-    status >= 400 && status < 500 ? LogSeverity.WARNING : LogSeverity.CRITICAL;
+    err instanceof ApiError ? LogSeverity.WARNING : LogSeverity.CRITICAL;
 
   await LogHelper.logError(route, err, severity);
 
-  if (err && typeof (err as { message?: unknown }).message === "string") {
+  if (err instanceof ApiError) {
     return res
-      .status(status)
-      .json({ message: (err as { message: string }).message });
+      .status(err.status)
+      .json({ code: err.code, message: err.message });
   }
 
   res.status(HTTPCodes.InternalServerError).json({
+    code: ErrorCode.INTERNAL_ERROR,
     message: "Internal server error",
   });
 }

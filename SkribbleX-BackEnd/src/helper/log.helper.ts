@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { env } from "../config/env.config";
 import { getRequestId, getRequestMeta } from "../utils/requestContext.util";
 
 export const LogSeverity = {
@@ -67,14 +68,13 @@ export class LogHelper {
     if (!this.resolvedLogDirPromise) {
       this.resolvedLogDirPromise = (async () => {
         const defaultDir = this.defaultLogDir();
-        const configuredLogDir = process.env.LOG_DIR;
 
-        if (!configuredLogDir) {
+        if (!env.LOG_DIR) {
           await this.ensureWritableDir(defaultDir);
           return defaultDir;
         }
 
-        const configuredDir = path.resolve(configuredLogDir);
+        const configuredDir = path.resolve(env.LOG_DIR);
         try {
           await this.ensureWritableDir(configuredDir);
           return configuredDir;
@@ -216,8 +216,7 @@ export class LogHelper {
     error: unknown,
     level: LogSeverity,
   ) {
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
 
     try {
       await this.logFile(route, errorMessage, level);

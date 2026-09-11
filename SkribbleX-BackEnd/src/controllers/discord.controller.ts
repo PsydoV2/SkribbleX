@@ -1,4 +1,7 @@
 import { NextFunction, Request, Response } from "express";
+import { env } from "../config/env.config";
+import { ApiError } from "../utils/apiError.util";
+import { ErrorCode } from "../utils/errorCodes.util";
 import { HTTPCodes } from "../utils/httpCodes.util";
 
 /**
@@ -15,42 +18,33 @@ export const exchangeToken = async (
     const { code } = req.body;
 
     if (!code) {
-      res.status(HTTPCodes.BadRequest).json({ error: "Missing code" });
-      return;
-    }
-
-    const clientId = process.env.DISCORD_CLIENT_ID;
-    const clientSecret = process.env.DISCORD_CLIENT_SECRET;
-
-    if (!clientId || !clientSecret) {
-      console.error(
-        "[discord/token] DISCORD_CLIENT_ID or DISCORD_CLIENT_SECRET not set",
+      throw new ApiError(
+        HTTPCodes.BadRequest,
+        ErrorCode.VALIDATION_ERROR,
+        "Missing code",
       );
-      res
-        .status(HTTPCodes.InternalServerError)
-        .json({ error: "Discord credentials not configured" });
-      return;
     }
 
     const response = await fetch("https://discord.com/api/oauth2/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
+        client_id: env.DISCORD_CLIENT_ID,
+        client_secret: env.DISCORD_CLIENT_SECRET,
         grant_type: "authorization_code",
         code,
-        redirect_uri: "https://skribblex.sfalter.de/",
+        redirect_uri: env.DISCORD_REDIRECT_URI,
       }),
     });
 
     if (!response.ok) {
       const text = await response.text();
       console.error("[discord/token] Exchange failed:", text);
-      res
-        .status(HTTPCodes.BadGateway)
-        .json({ error: "Token exchange failed" });
-      return;
+      throw new ApiError(
+        HTTPCodes.BadGateway,
+        ErrorCode.DISCORD_AUTH_FAILED,
+        "Token exchange failed",
+      );
     }
 
     const data = await response.json();

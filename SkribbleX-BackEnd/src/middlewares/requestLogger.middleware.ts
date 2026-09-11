@@ -44,9 +44,7 @@ export const globalRequestLogger = async (
         redactSensitiveFields(req.query as Record<string, unknown>),
       );
     } else {
-      payload = req.body
-        ? JSON.stringify(redactSensitiveFields(req.body))
-        : "";
+      payload = req.body ? JSON.stringify(redactSensitiveFields(req.body)) : "";
     }
 
     // Log once the response is actually sent, so the line can include the

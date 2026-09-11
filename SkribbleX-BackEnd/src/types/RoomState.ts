@@ -1,7 +1,8 @@
 // src/types/RoomState.ts
 import type { Player } from "./Player";
 
-export type GamePhase = "lobby" | "wordSelection" | "playing" | "roundEnd" | "gameEnd";
+export type GamePhase =
+  "lobby" | "wordSelection" | "playing" | "roundEnd" | "gameEnd";
 export type Language = "de" | "en";
 
 export interface StrokePoint {

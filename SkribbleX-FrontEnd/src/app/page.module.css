@@ -260,6 +260,23 @@
   line-height: 1.55;
 }
 
+/* ── Trailer ─────────────────────────────────────────────────────────────── */
+.trailer {
+  padding: 0 6vw 5rem;
+  max-width: calc(960px + 12vw);
+  width: 100%;
+  margin: 0 auto;
+}
+
+.trailerTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 1.5rem;
+}
+
 /* ── CTA Banner ──────────────────────────────────────────────────────────── */
 .banner {
   margin: 0 6vw 5rem;

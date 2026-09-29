@@ -1,6 +1,7 @@
 // src/app/page.tsx
 import Link from "next/link";
 import styles from "./page.module.css";
+import BragVideo from "@/components/BragVideo";
 
 export default function Home() {
   return (
@@ -107,6 +108,12 @@ export default function Home() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* ── Trailer ──────────────────────────────────────────────────── */}
+      <section className={styles.trailer}>
+        <h2 className={styles.trailerTitle}>See it in action</h2>
+        <BragVideo />
       </section>
 
       {/* ── Features ─────────────────────────────────────────────────── */}

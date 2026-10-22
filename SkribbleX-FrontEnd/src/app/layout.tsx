@@ -21,7 +21,7 @@ export default function RootLayout({
       <body>
         <Script
           defer
-          src="https://umami.sfalter.de/script.js"
+          src="https://webstats.sfalter.de/script.js"
           data-website-id="0bc60681-ab72-4c18-913a-5697e427fe82"
           strategy="afterInteractive"
         />
